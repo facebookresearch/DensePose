@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """Construct minibatches for Fast R-CNN training. Handles the minibatch blobs
@@ -31,8 +23,10 @@ from detectron.core.config import cfg
 import detectron.modeling.FPN as fpn
 import detectron.roi_data.keypoint_rcnn as keypoint_rcnn_roi_data
 import detectron.roi_data.mask_rcnn as mask_rcnn_roi_data
+import detectron.roi_data.body_uv_rcnn as body_uv_rcnn_roi_data
 import detectron.utils.blob as blob_utils
 import detectron.utils.boxes as box_utils
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +78,24 @@ def get_fast_rcnn_blob_names(is_training=True):
         # 'keypoint_loss_normalizer': optional normalization factor to use if
         # cfg.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False.
         blob_names += ['keypoint_loss_normalizer']
+        ########################
+
+    if is_training and cfg.MODEL.BODY_UV_ON:
+        blob_names += ['body_uv_rois']
+        blob_names += ['roi_has_body_uv_int32']
+        #########
+        # ###################################################
+        blob_names += ['body_uv_ann_labels']
+        blob_names += ['body_uv_ann_weights']
+        # #################################################
+        blob_names += ['body_uv_X_points']
+        blob_names += ['body_uv_Y_points']
+        blob_names += ['body_uv_Ind_points']
+        blob_names += ['body_uv_I_points']
+        blob_names += ['body_uv_U_points']
+        blob_names += ['body_uv_V_points']
+        blob_names += ['body_uv_point_weights']
+
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
         # Support for FPN multi-level rois without bbox reg isn't
         # implemented (... and may never be implemented)
@@ -102,6 +114,10 @@ def get_fast_rcnn_blob_names(is_training=True):
                 for lvl in range(k_min, k_max + 1):
                     blob_names += ['keypoint_rois_fpn' + str(lvl)]
                 blob_names += ['keypoint_rois_idx_restore_int32']
+            if cfg.MODEL.BODY_UV_ON:
+                for lvl in range(k_min, k_max + 1):
+                    blob_names += ['body_uv_rois_fpn' + str(lvl)]
+                blob_names += ['body_uv_rois_idx_restore_int32']
     return blob_names
 
 
@@ -203,6 +219,12 @@ def _sample_rois(roidb, im_scale, batch_idx):
             blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
         )
 
+    # Optionally body UV R-CNN blobs
+    if cfg.MODEL.BODY_UV_ON:
+        body_uv_rcnn_roi_data.add_body_uv_rcnn_blobs(
+            blob_dict, sampled_boxes, roidb, im_scale, batch_idx
+        )
+
     return blob_dict
 
 
@@ -263,3 +285,5 @@ def _add_multilevel_rois(blobs):
         _distribute_rois_over_fpn_levels('mask_rois')
     if cfg.MODEL.KEYPOINTS_ON:
         _distribute_rois_over_fpn_levels('keypoint_rois')
+    if cfg.MODEL.BODY_UV_ON:
+        _distribute_rois_over_fpn_levels('body_uv_rois')

@@ -8,18 +8,18 @@ ENV PYTHONPATH /usr/local/caffe2_build:${PYTHONPATH}
 ENV LD_LIBRARY_PATH /usr/local/caffe2_build/lib:${LD_LIBRARY_PATH}
 
 # Clone the Detectron repository
-RUN git clone https://github.com/facebookresearch/detectron /detectron
+RUN git clone https://github.com/facebookresearch/densepose /densepose
 
 # Install Python dependencies
-RUN pip install -r /detectron/requirements.txt
+RUN pip install -r /densepose/requirements.txt
 
 # Install the COCO API
 RUN git clone https://github.com/cocodataset/cocoapi.git /cocoapi
 WORKDIR /cocoapi/PythonAPI
 RUN make install
 
-# Go to Detectron root
-WORKDIR /detectron
+# Go to Densepose root
+WORKDIR /densepose
 
 # Set up Python modules
 RUN make

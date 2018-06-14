@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 #
 # Based on:
@@ -105,7 +97,15 @@ def im_detect_all(model, im, box_proposals, timers=None):
     else:
         cls_keyps = None
 
-    return cls_boxes, cls_segms, cls_keyps
+    if cfg.MODEL.BODY_UV_ON and boxes.shape[0] > 0:
+        timers['im_detect_body_uv'].tic()
+        cls_bodys = im_detect_body_uv(model, im_scale, boxes)
+        timers['im_detect_body_uv'].toc()
+        
+    else:
+        cls_bodys = None
+
+    return cls_boxes, cls_segms, cls_keyps, cls_bodys
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -884,6 +884,88 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
     kps = [xy_preds[i] for i in range(xy_preds.shape[0])]
     cls_keyps[person_idx] = kps
     return cls_keyps
+
+
+def im_detect_body_uv(model, im_scale, boxes):
+    """Compute body uv predictions."""
+    M = cfg.BODY_UV_RCNN.HEATMAP_SIZE
+    P = cfg.BODY_UV_RCNN.NUM_PATCHES
+    if boxes.shape[0] == 0:
+        pred_body_uvs = np.zeros((0, P, M, M), np.float32)
+        return pred_body_uvs
+
+    inputs = {'body_uv_rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'body_uv_rois')
+
+    for k, v in inputs.items():
+        workspace.FeedBlob(core.ScopedName(k), v)
+    workspace.RunNet(model.body_uv_net.Proto().name)
+
+    AnnIndex = workspace.FetchBlob(core.ScopedName('AnnIndex')).squeeze()
+    Index_UV = workspace.FetchBlob(core.ScopedName('Index_UV')).squeeze()
+    U_uv = workspace.FetchBlob(core.ScopedName('U_estimated')).squeeze()
+    V_uv = workspace.FetchBlob(core.ScopedName('V_estimated')).squeeze()
+
+    # In case of 1
+    if AnnIndex.ndim == 3:
+        AnnIndex = np.expand_dims(AnnIndex, axis=0)
+    if Index_UV.ndim == 3:
+        Index_UV = np.expand_dims(Index_UV, axis=0)
+    if U_uv.ndim == 3:
+        U_uv = np.expand_dims(U_uv, axis=0)
+    if V_uv.ndim == 3:
+        V_uv = np.expand_dims(V_uv, axis=0)
+
+    K = cfg.BODY_UV_RCNN.NUM_PATCHES + 1
+    outputs = []
+
+    for ind, entry in enumerate(boxes):
+        # Compute ref box width and height
+        bx = max(entry[2] - entry[0], 1)
+        by = max(entry[3] - entry[1], 1)
+
+        # preds[ind] axes are CHW; bring p axes to WHC
+        CurAnnIndex = np.swapaxes(AnnIndex[ind], 0, 2)
+        CurIndex_UV = np.swapaxes(Index_UV[ind], 0, 2)
+        CurU_uv = np.swapaxes(U_uv[ind], 0, 2)
+        CurV_uv = np.swapaxes(V_uv[ind], 0, 2)
+
+        # Resize p from (HEATMAP_SIZE, HEATMAP_SIZE, c) to (int(bx), int(by), c)
+        CurAnnIndex = cv2.resize(CurAnnIndex, (by, bx))
+        CurIndex_UV = cv2.resize(CurIndex_UV, (by, bx))
+        CurU_uv = cv2.resize(CurU_uv, (by, bx))
+        CurV_uv = cv2.resize(CurV_uv, (by, bx))
+
+        # Bring Cur_Preds axes back to CHW
+        CurAnnIndex = np.swapaxes(CurAnnIndex, 0, 2)
+        CurIndex_UV = np.swapaxes(CurIndex_UV, 0, 2)
+        CurU_uv = np.swapaxes(CurU_uv, 0, 2)
+        CurV_uv = np.swapaxes(CurV_uv, 0, 2)
+
+        # Removed squeeze calls due to singleton dimension issues
+        CurAnnIndex = np.argmax(CurAnnIndex, axis=0)
+        CurIndex_UV = np.argmax(CurIndex_UV, axis=0)
+        CurIndex_UV = CurIndex_UV * (CurAnnIndex>0).astype(np.float32)
+
+        output = np.zeros([3, int(by), int(bx)], dtype=np.float32)
+        output[0] = CurIndex_UV
+
+        for part_id in range(1, K):
+            CurrentU = CurU_uv[part_id]
+            CurrentV = CurV_uv[part_id]
+            output[1, CurIndex_UV==part_id] = CurrentU[CurIndex_UV==part_id]
+            output[2, CurIndex_UV==part_id] = CurrentV[CurIndex_UV==part_id]
+        outputs.append(output)
+
+    num_classes = cfg.MODEL.NUM_CLASSES
+    cls_bodys = [[] for _ in range(num_classes)]
+    person_idx = keypoint_utils.get_person_class_index()
+    cls_bodys[person_idx] = outputs
+
+    return cls_bodys
 
 
 def _get_rois_blob(im_rois, im_scale):

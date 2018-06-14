@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """Detectron model construction functions.
@@ -47,6 +39,7 @@ from detectron.modeling.detector import DetectionModelHelper
 from detectron.roi_data.loader import RoIDataLoader
 import detectron.modeling.fast_rcnn_heads as fast_rcnn_heads
 import detectron.modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
+import detectron.modeling.body_uv_rcnn_heads as body_uv_rcnn_heads
 import detectron.modeling.mask_rcnn_heads as mask_rcnn_heads
 import detectron.modeling.name_compat as name_compat
 import detectron.modeling.optimizer as optim
@@ -55,6 +48,7 @@ import detectron.modeling.rfcn_heads as rfcn_heads
 import detectron.modeling.rpn_heads as rpn_heads
 import detectron.roi_data.minibatch as roi_data_minibatch
 import detectron.utils.c2 as c2_utils
+
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +80,7 @@ def generalized_rcnn(model):
         add_roi_box_head_func=get_func(cfg.FAST_RCNN.ROI_BOX_HEAD),
         add_roi_mask_head_func=get_func(cfg.MRCNN.ROI_MASK_HEAD),
         add_roi_keypoint_head_func=get_func(cfg.KRCNN.ROI_KEYPOINTS_HEAD),
+        add_roi_body_uv_head_func=get_func(cfg.BODY_UV_RCNN.ROI_HEAD),
         freeze_conv_body=cfg.TRAIN.FREEZE_CONV_BODY
     )
 
@@ -158,6 +153,7 @@ def build_generic_detection_model(
     add_roi_box_head_func=None,
     add_roi_mask_head_func=None,
     add_roi_keypoint_head_func=None,
+    add_roi_body_uv_head_func=None,
     freeze_conv_body=False
 ):
     def _single_gpu_build_func(model):
@@ -181,6 +177,7 @@ def build_generic_detection_model(
             'box': None,
             'mask': None,
             'keypoints': None,
+            'body_uv' : None,
         }
 
         if cfg.RPN.RPN_ON:
@@ -214,6 +211,13 @@ def build_generic_detection_model(
             # Add the keypoint head
             head_loss_gradients['keypoint'] = _add_roi_keypoint_head(
                 model, add_roi_keypoint_head_func, blob_conv, dim_conv,
+                spatial_scale_conv
+            )
+
+        if cfg.MODEL.BODY_UV_ON:
+            # Add the body UV head
+            head_loss_gradients['body_uv'] = _add_roi_body_uv_head(
+                model, add_roi_body_uv_head_func, blob_conv, dim_conv,
                 spatial_scale_conv
             )
 
@@ -321,6 +325,36 @@ def _add_roi_keypoint_head(
     return loss_gradients
 
 
+def _add_roi_body_uv_head(
+    model, add_roi_body_uv_head_func, blob_in, dim_in, spatial_scale_in
+):
+    """Add a body UV prediction head to the model."""
+    # Capture model graph before adding the mask head
+    bbox_net = copy.deepcopy(model.net.Proto())
+    # Add the body UV head
+    blob_body_uv_head, dim_body_uv_head = add_roi_body_uv_head_func(
+        model, blob_in, dim_in, spatial_scale_in
+    )
+    # Add the body UV output
+    blobs_body_uv = body_uv_rcnn_heads.add_body_uv_outputs(
+        model, blob_body_uv_head, dim_body_uv_head
+    )
+
+    if not model.train:  # == inference
+        # Inference uses a cascade of box predictions, then body uv predictions
+        # This requires separate nets for box and body uv prediction.
+        # So we extract the keypoint prediction net, store it as its own
+        # network, then restore model.net to be the bbox-only network
+        model.body_uv_net, body_uv_blob_out = c2_utils.SuffixNet(
+            'body_uv_net', model.net, len(bbox_net.op), blobs_body_uv
+        )
+        model.net._net = bbox_net
+        loss_gradients = None
+    else:
+        loss_gradients = body_uv_rcnn_heads.add_body_uv_losses(model)
+    return loss_gradients
+
+
 def build_generic_rfcn_model(model, add_conv_body_func, dim_reduce=None):
     # TODO(rbg): fold this function into build_generic_detection_model
     def _single_gpu_build_func(model):
@@ -417,6 +451,8 @@ def add_inference_inputs(model):
         create_input_blobs_for_net(model.mask_net.Proto())
     if cfg.MODEL.KEYPOINTS_ON:
         create_input_blobs_for_net(model.keypoint_net.Proto())
+    if cfg.MODEL.BODY_UV_ON:
+        create_input_blobs_for_net(model.body_uv_net.Proto())
 
 
 # ---------------------------------------------------------------------------- #

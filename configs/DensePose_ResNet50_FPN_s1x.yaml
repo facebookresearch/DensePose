@@ -1,0 +1,78 @@
+MODEL:
+  TYPE: generalized_rcnn
+  CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
+  NUM_CLASSES: 2
+  BODY_UV_ON: True
+NUM_GPUS: 8
+SOLVER:
+  WEIGHT_DECAY: 0.0001
+  LR_POLICY: steps_with_decay
+  GAMMA: 0.1
+  WARM_UP_ITERS: 1000
+  WARM_UP_FACTOR: 0.1
+  # Linear scaling rule:
+  # 1 GPU:
+  #   BASE_LR: 0.00025
+  #   MAX_ITER: 720000
+  #   STEPS: [0, 480000, 640000]
+  # 2 GPUs:
+  #   BASE_LR: 0.0005
+  #   MAX_ITER: 360000
+  #   STEPS: [0, 240000, 320000]
+  # 4 GPUs:
+  #  BASE_LR: 0.001
+  #  MAX_ITER: 180000
+  #  STEPS: [0, 120000, 160000]
+  #8 GPUs:
+  BASE_LR: 0.002
+  MAX_ITER: 130000
+  STEPS: [0, 100000, 120000]
+FPN:
+  FPN_ON: True
+  MULTILEVEL_ROIS: True
+  MULTILEVEL_RPN: True
+FAST_RCNN:
+  ROI_BOX_HEAD: fast_rcnn_heads.add_roi_2mlp_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+BODY_UV_RCNN:
+  ROI_HEAD: body_uv_rcnn_heads.add_roi_body_uv_head_v1convX
+  NUM_STACKED_CONVS: 8
+  NUM_PATCHES: 24
+  USE_DECONV_OUTPUT: True
+  CONV_INIT: MSRAFill
+  CONV_HEAD_DIM: 512
+  UP_SCALE: 2
+  HEATMAP_SIZE: 56
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2
+  ##
+  # Loss weights for annotation masks.(14 Parts)
+  INDEX_WEIGHTS : 2.0
+  # Loss weights for surface parts. (24 Parts)  
+  PART_WEIGHTS : 0.3
+  # Loss weights for UV regression.
+  POINT_REGRESSION_WEIGHTS : 0.1
+  ##
+  BODY_UV_IMS: True 
+TRAIN:
+  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/ImageNetPretrained/MSRA/R-50.pkl
+  DATASETS: ('dense_coco_2014_train', 'dense_coco_2014_valminusminival')
+  PROPOSAL_FILES: ('https://s3.amazonaws.com/densepose/DensePose-RPN-train_fpn_resnet50.pkl','https://s3.amazonaws.com/densepose/DensePose-RPN-valminusminival_fpn_resnet50.pkl')
+  SCALES: (640, 672, 704, 736, 768, 800)
+  MAX_SIZE: 1333
+  IMS_PER_BATCH: 3
+  BATCH_SIZE_PER_IM: 512
+  USE_FLIPPED: True
+TEST:
+  DATASETS: ('dense_coco_2014_minival',)
+  PROPOSAL_FILES: ('https://s3.amazonaws.com/densepose/DensePose-RPN-minival_fpn_resnet50.pkl',)
+  PROPOSAL_LIMIT: 1000
+  SCALE: 800
+  MAX_SIZE: 1333
+  NMS: 0.5
+  FORCE_JSON_DATASET_EVAL: True
+  DETECTIONS_PER_IM: 20
+OUTPUT_DIR: ''

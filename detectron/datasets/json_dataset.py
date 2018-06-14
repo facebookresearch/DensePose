@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """Representation of the standard COCO json dataset format.
@@ -136,9 +128,18 @@ class JsonDataset(object):
         entry['image'] = im_path
         entry['flipped'] = False
         entry['has_visible_keypoints'] = False
+        entry['has_body_uv'] = False
         # Empty placeholders
         entry['boxes'] = np.empty((0, 4), dtype=np.float32)
         entry['segms'] = []
+        # densepose entries
+        entry['dp_x'] = []
+        entry['dp_y'] = []
+        entry['dp_I'] = []
+        entry['dp_U'] = []
+        entry['dp_V'] = []
+        entry['dp_masks'] = []
+        #
         entry['gt_classes'] = np.empty((0), dtype=np.int32)
         entry['seg_areas'] = np.empty((0), dtype=np.float32)
         entry['gt_overlaps'] = scipy.sparse.csr_matrix(
@@ -152,6 +153,9 @@ class JsonDataset(object):
             entry['gt_keypoints'] = np.empty(
                 (0, 3, self.num_keypoints), dtype=np.int32
             )
+        if cfg.MODEL.BODY_UV_ON:
+            entry['ignore_UV_body'] = np.empty((0),  dtype=np.bool)
+        #    entry['Box_image_links_body'] = []
         # Remove unwanted fields that come from the json file (if they exist)
         for k in ['date_captured', 'url', 'license', 'file_name']:
             if k in entry:
@@ -164,6 +168,14 @@ class JsonDataset(object):
         # Sanitize bboxes -- some are invalid
         valid_objs = []
         valid_segms = []
+        ####
+        valid_dp_x = []
+        valid_dp_y = []
+        valid_dp_I = []
+        valid_dp_U = []
+        valid_dp_V = []
+        valid_dp_masks = []
+        ####
         width = entry['width']
         height = entry['height']
         for obj in objs:
@@ -187,8 +199,24 @@ class JsonDataset(object):
                 obj['clean_bbox'] = [x1, y1, x2, y2]
                 valid_objs.append(obj)
                 valid_segms.append(obj['segmentation'])
+                ###
+                if 'dp_x' in obj.keys():
+                    valid_dp_x.append(obj['dp_x'])
+                    valid_dp_y.append(obj['dp_y'])
+                    valid_dp_I.append(obj['dp_I'])
+                    valid_dp_U.append(obj['dp_U'])
+                    valid_dp_V.append(obj['dp_V'])
+                    valid_dp_masks.append(obj['dp_masks'])
+                else:
+                    valid_dp_x.append([])
+                    valid_dp_y.append([])
+                    valid_dp_I.append([])
+                    valid_dp_U.append([])
+                    valid_dp_V.append([])
+                    valid_dp_masks.append([])
+                ###
         num_valid_objs = len(valid_objs)
-
+        ##
         boxes = np.zeros((num_valid_objs, 4), dtype=entry['boxes'].dtype)
         gt_classes = np.zeros((num_valid_objs), dtype=entry['gt_classes'].dtype)
         gt_overlaps = np.zeros(
@@ -205,8 +233,13 @@ class JsonDataset(object):
                 (num_valid_objs, 3, self.num_keypoints),
                 dtype=entry['gt_keypoints'].dtype
             )
+        if cfg.MODEL.BODY_UV_ON:
+            ignore_UV_body = np.zeros((num_valid_objs))
+            #Box_image_body  = [None]*num_valid_objs
 
         im_has_visible_keypoints = False
+        im_has_any_body_uv = False
+
         for ix, obj in enumerate(valid_objs):
             cls = self.json_category_id_to_contiguous_id[obj['category_id']]
             boxes[ix, :] = obj['clean_bbox']
@@ -218,6 +251,13 @@ class JsonDataset(object):
                 gt_keypoints[ix, :, :] = self._get_gt_keypoints(obj)
                 if np.sum(gt_keypoints[ix, 2, :]) > 0:
                     im_has_visible_keypoints = True
+            if cfg.MODEL.BODY_UV_ON:
+                if 'dp_x' in obj:
+                    ignore_UV_body[ix] = False
+                    im_has_any_body_uv = True
+                else:
+                    ignore_UV_body[ix] = True
+                    
             if obj['iscrowd']:
                 # Set overlap to -1 for all classes for crowd objects
                 # so they will be excluded during training
@@ -226,9 +266,12 @@ class JsonDataset(object):
                 gt_overlaps[ix, cls] = 1.0
         entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
         entry['segms'].extend(valid_segms)
-        # To match the original implementation:
-        # entry['boxes'] = np.append(
-        #     entry['boxes'], boxes.astype(np.int).astype(np.float), axis=0)
+        entry['dp_x'].extend(valid_dp_x)
+        entry['dp_y'].extend(valid_dp_y)
+        entry['dp_I'].extend(valid_dp_I)
+        entry['dp_U'].extend(valid_dp_U)
+        entry['dp_V'].extend(valid_dp_V)
+        entry['dp_masks'].extend(valid_dp_masks)
         entry['gt_classes'] = np.append(entry['gt_classes'], gt_classes)
         entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
         entry['gt_overlaps'] = np.append(
@@ -244,6 +287,10 @@ class JsonDataset(object):
                 entry['gt_keypoints'], gt_keypoints, axis=0
             )
             entry['has_visible_keypoints'] = im_has_visible_keypoints
+        if cfg.MODEL.BODY_UV_ON:
+            entry['ignore_UV_body'] = np.append(entry['ignore_UV_body'], ignore_UV_body)
+            #entry['Box_image_links_body'].extend(Box_image_body)
+            entry['has_body_uv'] = im_has_any_body_uv
 
     def _add_proposals_from_file(
         self, roidb, proposal_file, min_proposal_size, top_k, crowd_thresh

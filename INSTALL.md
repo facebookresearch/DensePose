@@ -1,8 +1,6 @@
-# Installing Detectron
+# Installing DensePose
 
-This document covers how to install Detectron, its dependencies (including Caffe2), and the COCO dataset.
-
-- For general information about Detectron, please see [`README.md`](README.md).
+The DensePose-RCNN system is implemented within the [`detectron`](https://github.com/facebookresearch/Detectron) framework. This document is based on the Detectron installation instructions, for troubleshooting please refer to the [`detectron installation document`](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md).
 
 **Requirements:**
 
@@ -48,49 +46,32 @@ python2 setup.py install --user
 
 Note that instructions like `# COCOAPI=/path/to/install/cocoapi` indicate that you should pick a path where you'd like to have the software cloned and then set an environment variable (`COCOAPI` in this case) accordingly.
 
-## Detectron
+## Densepose
 
-Clone the Detectron repository:
+Clone the Densepose repository:
 
 ```
-# DETECTRON=/path/to/clone/detectron
-git clone https://github.com/facebookresearch/detectron $DETECTRON
+# DENSEPOSE=/path/to/clone/densepose
+git clone https://github.com/facebookresearch/densepose $DENSEPOSE
 ```
 
 Install Python dependencies:
 
 ```
-pip install -r $DETECTRON/requirements.txt
+pip install -r $DENSEPOSE/requirements.txt
 ```
 
 Set up Python modules:
 
 ```
-cd $DETECTRON && make
+cd $DENSEPOSE && make
 ```
 
 Check that Detectron tests pass (e.g. for [`SpatialNarrowAsOp test`](tests/test_spatial_narrow_as_op.py)):
 
 ```
-python2 $DETECTRON/detectron/tests/test_spatial_narrow_as_op.py
+python2 $DENSEPOSE/detectron/tests/test_spatial_narrow_as_op.py
 ```
-
-## That's All You Need for Inference
-
-At this point, you can run inference using pretrained Detectron models. Take a look at our [inference tutorial](GETTING_STARTED.md) for an example. If you want to train models on the COCO dataset, then please continue with the installation instructions.
-
-## Datasets
-
-Detectron finds datasets via symlinks from `detectron/datasets/data` to the actual locations where the dataset images and annotations are stored. For instructions on how to create symlinks for COCO and other datasets, please see [`detectron/datasets/data/README.md`](detectron/datasets/data/README.md).
-
-After symlinks have been created, that's all you need to start training models.
-
-## Advanced Topic: Custom Operators for New Research Projects
-
-Please read the custom operators section of the [`FAQ`](FAQ.md) first.
-
-For convenience, we provide CMake support for building custom operators. All custom operators are built into a single library that can be loaded dynamically from Python.
-Place your custom operator implementation under [`detectron/ops/`](detectron/ops/) and see [`detectron/tests/test_zero_even_op.py`](detectron/tests/test_zero_even_op.py) for an example of how to load custom operators from Python.
 
 Build the custom operators library:
 
@@ -103,122 +84,63 @@ Check that the custom operator tests pass:
 ```
 python2 $DETECTRON/detectron/tests/test_zero_even_op.py
 ```
+### Fetch DensePose data.
+Get necessary files to run, train and evaluate DensePose.
+```
+cd $DETECTRON/DensePoseData
+bash get_densepose_uv.sh
+```
+For training, download the DensePose-COCO dataset:
+```
+bash get_densepose_COCO.sh
+```
+For evaluation, get the necessary files:
+```
+bash get_eval_data.sh
+```
+## Setting-up the COCO dataset.
+
+Create a symlink for the COCO dataset in your `datasets/data` folder.
+```
+ln -s /path/to/coco $DETECTRON/detectron/datasets/data/coco
+```
+
+Create symlinks for the DensePose-COCO annotations
+
+```
+ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+```
+
+Your local COCO dataset copy at `/path/to/coco` should have the following directory structure:
+
+```
+coco
+|_ coco_train2014
+|  |_ <im-1-name>.jpg
+|  |_ ...
+|  |_ <im-N-name>.jpg
+|_ coco_val2014
+|_ ...
+|_ annotations
+   |_ instances_train2014.json
+   |_ ...
+```
 
 ## Docker Image
 
-We provide a [`Dockerfile`](docker/Dockerfile) that you can use to build a Detectron image on top of a Caffe2 image that satisfies the requirements outlined at the top. If you would like to use a Caffe2 image different from the one we use by default, please make sure that it includes the [Detectron module](https://github.com/caffe2/caffe2/tree/master/modules/detectron).
+We provide a [`Dockerfile`](docker/Dockerfile) that you can use to build a Densepose image on top of a Caffe2 image that satisfies the requirements outlined at the top. If you would like to use a Caffe2 image different from the one we use by default, please make sure that it includes the [Detectron module](https://github.com/caffe2/caffe2/tree/master/modules/detectron).
 
 Build the image:
 
 ```
-cd $DETECTRON/docker
-docker build -t detectron:c2-cuda9-cudnn7 .
+cd $DENSEPOSE/docker
+docker build -t densepose:c2-cuda9-cudnn7 .
 ```
 
 Run the image (e.g. for [`BatchPermutationOp test`](tests/test_batch_permutation_op.py)):
 
 ```
-nvidia-docker run --rm -it detectron:c2-cuda9-cudnn7 python2 detectron/tests/test_batch_permutation_op.py
+nvidia-docker run --rm -it densepose:c2-cuda9-cudnn7 python2 detectron/tests/test_batch_permutation_op.py
 ```
-
-## Troubleshooting
-
-In case of Caffe2 installation problems, please read the troubleshooting section of the relevant Caffe2 [installation instructions](https://caffe2.ai/docs/getting-started.html) first. In the following, we provide additional troubleshooting tips for Caffe2 and Detectron.
-
-### Caffe2 Operator Profiling
-
-Caffe2 comes with performance [`profiling`](https://github.com/caffe2/caffe2/tree/master/caffe2/contrib/prof)
-support which you may find useful for benchmarking or debugging your operators
-(see [`BatchPermutationOp test`](tests/test_batch_permutation_op.py) for example usage).
-Profiling support is not built by default and you can enable it by setting
-the `-DUSE_PROF=ON` flag when running Caffe2 CMake.
-
-### CMake Cannot Find CUDA and cuDNN
-
-Sometimes CMake has trouble with finding CUDA and cuDNN dirs on your machine.
-
-When building Caffe2, you can point CMake to CUDA and cuDNN dirs by running:
-
-```
-cmake .. \
-  # insert your Caffe2 CMake flags here
-  -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda/toolkit/dir \
-  -DCUDNN_ROOT_DIR=/path/to/cudnn/root/dir
-```
-
-Similarly, when building custom Detectron operators you can use:
-
-```
-cd $DETECTRON
-mkdir -p build && cd build
-cmake .. \
-  -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda/toolkit/dir \
-  -DCUDNN_ROOT_DIR=/path/to/cudnn/root/dir
-make
-```
-
-Note that you can use the same commands to get CMake to use specific versions of CUDA and cuDNN out of possibly multiple versions installed on your machine.
-
-### Protobuf Errors
-
-Caffe2 uses protobuf as its serialization format and requires version `3.2.0` or newer.
-If your protobuf version is older, you can build protobuf from Caffe2 protobuf submodule and use that version instead.
-
-To build Caffe2 protobuf submodule:
-
-```
-# CAFFE2=/path/to/caffe2
-cd $CAFFE2/third_party/protobuf/cmake
-mkdir -p build && cd build
-cmake .. \
-  -DCMAKE_INSTALL_PREFIX=$HOME/c2_tp_protobuf \
-  -Dprotobuf_BUILD_TESTS=OFF \
-  -DCMAKE_CXX_FLAGS="-fPIC"
-make install
-```
-
-To point Caffe2 CMake to the newly built protobuf:
-
-```
-cmake .. \
-  # insert your Caffe2 CMake flags here
-  -DPROTOBUF_PROTOC_EXECUTABLE=$HOME/c2_tp_protobuf/bin/protoc \
-  -DPROTOBUF_INCLUDE_DIR=$HOME/c2_tp_protobuf/include \
-  -DPROTOBUF_LIBRARY=$HOME/c2_tp_protobuf/lib64/libprotobuf.a
-```
-
-You may also experience problems with protobuf if you have both system and anaconda packages installed.
-This could lead to problems as the versions could be mixed at compile time or at runtime.
-This issue can also be overcome by following the commands from above.
-
-### Caffe2 Python Binaries
-
-In case you experience issues with CMake being unable to find the required Python paths when
-building Caffe2 Python binaries (e.g. in virtualenv), you can try pointing Caffe2 CMake to python
-library and include dir by using:
-
-```
-cmake .. \
-  # insert your Caffe2 CMake flags here
-  -DPYTHON_LIBRARY=$(python2 -c "from distutils import sysconfig; print(sysconfig.get_python_lib())") \
-  -DPYTHON_INCLUDE_DIR=$(python2 -c "from distutils import sysconfig; print(sysconfig.get_python_inc())")
-```
-
-### Caffe2 with NNPACK Build
-
-Detectron does not require Caffe2 built with NNPACK support. If you face NNPACK related issues during Caffe2 installation, you can safely disable NNPACK by setting the `-DUSE_NNPACK=OFF` CMake flag.
-
-### Caffe2 with OpenCV Build
-
-Analogously to the NNPACK case above, you can disable OpenCV by setting the `-DUSE_OPENCV=OFF` CMake flag.
-
-### COCO API Undefined Symbol Error
-
-If you encounter a COCO API import error due to an undefined symbol, as reported [here](https://github.com/cocodataset/cocoapi/issues/35),
-make sure that your python versions are not getting mixed. For instance, this issue may arise if you have
-[both system and conda numpy installed](https://stackoverflow.com/questions/36190757/numpy-undefined-symbol-pyfpe-jbuf).
-
-### CMake Cannot Find Caffe2
-
-In case you experience issues with CMake being unable to find the Caffe2 package when building custom operators,
-make sure you have run `make install` as part of your Caffe2 installation process.

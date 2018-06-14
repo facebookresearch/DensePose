@@ -1,18 +1,8 @@
-#!/usr/bin/env python2
-
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """Perform inference on a single image or all images with a certain extension
@@ -115,7 +105,7 @@ def main(args):
         timers = defaultdict(Timer)
         t = time.time()
         with c2_utils.NamedCudaScope(0):
-            cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
+            cls_boxes, cls_segms, cls_keyps, cls_bodys = infer_engine.im_detect_all(
                 model, im, None, timers=timers
             )
         logger.info('Inference time: {:.3f}s'.format(time.time() - t))
@@ -134,6 +124,7 @@ def main(args):
             cls_boxes,
             cls_segms,
             cls_keyps,
+            cls_bodys,
             dataset=dummy_coco_dataset,
             box_alpha=0.3,
             show_class=True,

@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """IO utilities."""
@@ -30,8 +22,6 @@ import urllib2
 
 logger = logging.getLogger(__name__)
 
-_DETECTRON_S3_BASE_URL = 'https://s3-us-west-2.amazonaws.com/detectron'
-
 
 def save_object(obj, file_name):
     """Save a Python object by pickling it."""
@@ -49,15 +39,15 @@ def cache_url(url_or_file, cache_dir):
 
     if not is_url:
         return url_or_file
-
+    #
     url = url_or_file
-    assert url.startswith(_DETECTRON_S3_BASE_URL), \
-        ('Detectron only automatically caches URLs in the Detectron S3 '
-         'bucket: {}').format(_DETECTRON_S3_BASE_URL)
-
-    cache_file_path = url.replace(_DETECTRON_S3_BASE_URL, cache_dir)
+    #
+    Len_filename  = len( url.split('/')[-1] )
+    BASE_URL  =  url[0:-Len_filename-1]
+    #
+    cache_file_path = url.replace(BASE_URL, cache_dir)
     if os.path.exists(cache_file_path):
-        assert_cache_file_is_ok(url, cache_file_path)
+        #assert_cache_file_is_ok(url, cache_file_path)
         return cache_file_path
 
     cache_file_dir = os.path.dirname(cache_file_path)
@@ -66,7 +56,7 @@ def cache_url(url_or_file, cache_dir):
 
     logger.info('Downloading remote file {} to {}'.format(url, cache_file_path))
     download_url(url, cache_file_path)
-    assert_cache_file_is_ok(url, cache_file_path)
+    #assert_cache_file_is_ok(url, cache_file_path)
     return cache_file_path
 
 

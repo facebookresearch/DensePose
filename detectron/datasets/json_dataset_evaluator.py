@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 
 """Functions for evaluating results computed for a json dataset."""
@@ -25,8 +17,11 @@ import logging
 import numpy as np
 import os
 import uuid
+import pickle
 
-from pycocotools.cocoeval import COCOeval
+#from pycocotools.cocoeval import COCOeval
+from detectron.datasets.densepose_cocoeval import denseposeCOCOeval
+
 
 from detectron.core.config import cfg
 from detectron.utils.io import save_object
@@ -113,7 +108,7 @@ def _coco_segms_results_one_category(json_dataset, boxes, segms, cat_id):
 
 def _do_segmentation_eval(json_dataset, res_file, output_dir):
     coco_dt = json_dataset.COCO.loadRes(str(res_file))
-    coco_eval = COCOeval(json_dataset.COCO, coco_dt, 'segm')
+    coco_eval = denseposeCOCOeval(json_dataset.COCO, coco_dt, 'segm')
     coco_eval.evaluate()
     coco_eval.accumulate()
     _log_detection_eval_metrics(json_dataset, coco_eval)
@@ -190,7 +185,7 @@ def _coco_bbox_results_one_category(json_dataset, boxes, cat_id):
 
 def _do_detection_eval(json_dataset, res_file, output_dir):
     coco_dt = json_dataset.COCO.loadRes(str(res_file))
-    coco_eval = COCOeval(json_dataset.COCO, coco_dt, 'bbox')
+    coco_eval = denseposeCOCOeval(json_dataset.COCO, coco_dt, 'bbox')
     coco_eval.evaluate()
     coco_eval.accumulate()
     _log_detection_eval_metrics(json_dataset, coco_eval)
@@ -419,12 +414,136 @@ def _do_keypoint_eval(json_dataset, res_file, output_dir):
     imgIds = json_dataset.COCO.getImgIds()
     imgIds.sort()
     coco_dt = json_dataset.COCO.loadRes(res_file)
-    coco_eval = COCOeval(json_dataset.COCO, coco_dt, ann_type)
+    coco_eval = denseposeCOCOeval(json_dataset.COCO, coco_dt, ann_type)
     coco_eval.params.imgIds = imgIds
     coco_eval.evaluate()
     coco_eval.accumulate()
     eval_file = os.path.join(output_dir, 'keypoint_results.pkl')
     save_object(coco_eval, eval_file)
     logger.info('Wrote json eval results to: {}'.format(eval_file))
+    coco_eval.summarize()
+    return coco_eval
+
+
+def evaluate_body_uv(
+    json_dataset,
+    all_boxes,
+    all_bodys,
+    output_dir,
+    use_salt=True,
+    cleanup=False
+):
+    res_file = os.path.join(
+        output_dir, 'body_uv_' + json_dataset.name + '_results'
+    )
+    if use_salt:
+        res_file += '_{}'.format(str(uuid.uuid4()))
+    res_file += '.pkl'
+    results = _write_coco_body_uv_results_file(
+        json_dataset, all_boxes, all_bodys, res_file
+    )
+    # Only do evaluation on non-test sets (annotations are undisclosed on test)
+    if json_dataset.name.find('test') == -1:
+        # See comment in _write_coco_body_uv_results_file
+        #coco_eval = _do_body_uv_eval(json_dataset, res_file, output_dir)
+        coco_eval = _do_body_uv_eval(json_dataset, results, output_dir)
+    else:
+        coco_eval = None
+    # See comment in _write_coco_body_uv_results_file
+    # Optionally cleanup results json file
+    #if cleanup:
+    #    os.remove(res_file)
+    return coco_eval
+
+
+def _write_coco_body_uv_results_file(
+    json_dataset, all_boxes, all_bodys, res_file
+):
+    results = []
+    for cls_ind,cls in enumerate(json_dataset.classes):
+        if cls == '__background__':
+            continue
+        if cls_ind >= len(all_bodys):
+            break
+        logger.info(
+            'Collecting {} results ({:d}/{:d})'.format(
+                cls, cls_ind, len(all_bodys) - 1))
+        cat_id = json_dataset.category_to_id_map[cls]
+        results.extend(_coco_body_uv_results_one_category(
+            json_dataset, all_boxes[cls_ind], all_bodys[cls_ind], cat_id))
+    # Body UV results are stored in 3xHxW ndarray format,
+    # which is not json serializable
+    #logger.info(
+    #    'Writing body uv results json to: {}'.format(
+    #        os.path.abspath(res_file)))
+    #with open(res_file, 'w') as fid:
+    #    json.dump(results, fid)
+    #
+    logger.info(
+        'Writing body uv results pkl to: {}'.format(
+            os.path.abspath(res_file)))
+
+    with open(res_file, 'wb') as f:
+        pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
+    #logger.info('Not writing body uv resuts json')
+    return res_file
+
+
+def _coco_body_uv_results_one_category(json_dataset, boxes, body_uvs, cat_id):
+    results = []
+    image_ids = json_dataset.COCO.getImgIds()
+    image_ids.sort()
+    assert len(body_uvs) == len(image_ids)
+    assert len(boxes) == len(image_ids)
+    #
+    for i, image_id in enumerate(image_ids):
+        if len(boxes[i]) == 0 or len(body_uvs[i]) == 0:
+            continue
+        uv_dets = body_uvs[i]
+        box_dets = boxes[i].astype(np.float)
+        scores = box_dets[:, -1]
+        # Don't use xyxy_to_xywh function for consistency with the original imp
+        # Instead, cast to ints and don't add 1 when computing ws and hs
+        # xywh_box_dets = box_utils.xyxy_to_xywh(box_dets[:, 0:4])
+        # xs = xywh_box_dets[:, 0]
+        # ys = xywh_box_dets[:, 1]
+        # ws = xywh_box_dets[:, 2]
+        # hs = xywh_box_dets[:, 3]
+        
+        # Convert the uv fields to uint8.
+        for uv in uv_dets:
+            uv[1:3,:,:] = uv[1:3,:,:]*255
+        ###
+        xs = box_dets[:, 0]
+        ys = box_dets[:, 1]
+        ws = (box_dets[:, 2] - xs).astype(np.int)
+        hs = (box_dets[:, 3] - ys).astype(np.int)
+        #
+        results.extend(
+            [{'image_id': image_id,
+              'category_id': cat_id,
+              'uv': uv_dets[k].astype(np.uint8),
+              'bbox': [xs[k], ys[k], ws[k], hs[k]],
+              'score': scores[k]} for k in range(box_dets.shape[0])])
+    return results
+
+
+def _do_body_uv_eval(json_dataset, res_file, output_dir):
+    ann_type = 'uv'
+    imgIds = json_dataset.COCO.getImgIds()
+    imgIds.sort()
+    with open(res_file, 'rb') as f:
+        res=pickle.load(f)
+    coco_dt = json_dataset.COCO.loadRes(res)
+    # Non-standard params used by the modified COCO API version
+    # from the DensePose fork
+    test_sigma = 0.255
+    coco_eval = denseposeCOCOeval(json_dataset.COCO, coco_dt, ann_type, test_sigma)
+    coco_eval.params.imgIds = imgIds
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    #eval_file = os.path.join(output_dir, 'body_uv_results.pkl')
+    #save_object(coco_eval, eval_file)
+    #logger.info('Wrote json eval results to: {}'.format(eval_file))
     coco_eval.summarize()
     return coco_eval

@@ -16,9 +16,18 @@ build/
 *.swo
 *.swp
 
+*.mat
+*.pkl
+*.tar.gz
+*.json
+
+*.DS_Store
 # Dataset symlinks
 detectron/datasets/data/*
 !detectron/datasets/data/README.md
 
 # Generated C files
 detectron/utils/cython_*.c
+
+notebooks_old/*
+configs_old/*

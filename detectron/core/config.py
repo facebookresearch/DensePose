@@ -1,16 +1,8 @@
-# Copyright (c) 2017-present, Facebook, Inc.
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 ##############################################################################
 #
 # Based on:
@@ -471,6 +463,9 @@ __C.MODEL.MASK_ON = False
 # keypoints)
 __C.MODEL.KEYPOINTS_ON = False
 
+# Indicates the model makes body UV predictions (as in DensePose R-CNN)
+__C.MODEL.BODY_UV_ON = False
+
 # Indicates the model's computation terminates with the production of RPN
 # proposals (i.e., it outputs proposals ONLY, no actual object detections)
 __C.MODEL.RPN_ONLY = False
@@ -851,6 +846,57 @@ __C.KRCNN.LOSS_WEIGHT = 1.0
 # in the minibatch. See comments in modeling.model_builder.add_keypoint_losses
 # for detailed discussion.
 __C.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS = True
+
+
+# ---------------------------------------------------------------------------- #
+# Body UV R-CNN options
+# ---------------------------------------------------------------------------- #
+__C.BODY_UV_RCNN = AttrDict()
+
+# The type of RoI head to use for body UV prediction
+__C.BODY_UV_RCNN.ROI_HEAD = b''
+
+# Output size (and size loss is computed on), e.g., 56x56
+__C.BODY_UV_RCNN.HEATMAP_SIZE = -1
+
+# Use bilinear interpolation to upsample the final heatmap by this factor
+__C.BODY_UV_RCNN.UP_SCALE = -1
+
+# Apply a ConvTranspose layer to the features prior to predicting the heatmaps
+__C.KRCNN.USE_DECONV = False
+# Channel dimension of the hidden representation produced by the ConvTranspose
+__C.BODY_UV_RCNN.DECONV_DIM = 256
+# Use a ConvTranspose layer to predict the heatmaps
+__C.BODY_UV_RCNN.USE_DECONV_OUTPUT = False
+# Use dilation in the body UV head
+__C.BODY_UV_RCNN.DILATION = 1
+# Size of the kernels to use in all ConvTranspose operations
+__C.BODY_UV_RCNN.DECONV_KERNEL = 4
+
+# Number of patches in the dataset
+__C.BODY_UV_RCNN.NUM_PATCHES = -1
+
+# Number of stacked Conv layers in body UV head
+__C.BODY_UV_RCNN.NUM_STACKED_CONVS = 8
+# Dimension of the hidden representation output by the body UV head
+__C.BODY_UV_RCNN.CONV_HEAD_DIM = 256
+# Conv kernel size used in the body UV head
+__C.BODY_UV_RCNN.CONV_HEAD_KERNEL = 3
+# Conv kernel weight filling function
+__C.BODY_UV_RCNN.CONV_INIT = b'GaussianFill'
+
+# Standard ROI XFORM options (see FAST_RCNN or MRCNN options)
+__C.BODY_UV_RCNN.ROI_XFORM_METHOD = b'RoIAlign'
+__C.BODY_UV_RCNN.ROI_XFORM_RESOLUTION = 7
+__C.BODY_UV_RCNN.ROI_XFORM_SAMPLING_RATIO = 0
+
+# Weights
+__C.BODY_UV_RCNN.INDEX_WEIGHTS = 5.0
+__C.BODY_UV_RCNN.PART_WEIGHTS = 1.0
+__C.BODY_UV_RCNN.POINT_REGRESSION_WEIGHTS = 0.001
+
+# Train only with images that have body uv annotations
+__C.BODY_UV_RCNN.BODY_UV_IMS = False
 
 
 # ---------------------------------------------------------------------------- #
