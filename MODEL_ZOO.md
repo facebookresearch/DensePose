@@ -13,7 +13,7 @@ The RPN results are obtained using the models provided in the Detectron model-zo
 
 | Model | AP  |  AP50 | AP75  | APm  |APl |
 |-----|-----|---    |---    |---   |--- |
-| [`ResNet50_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN.pkl)| 0.5119 |0.8538|0.5409 |0.4532|0.5322|
+| [`ResNet50_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x.pkl)| 0.5119 |0.8538|0.5409 |0.4532|0.5322|
 | [`ResNet50_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl)|0.5221 |0.8556|0.5581| 0.4746|0.5422|
 | [`ResNet101_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x.pkl)|0.5461| 0.8695|0.5828 |0.4871|0.5651|
 | [`ResNet101_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl)|0.5598 |0.8754|0.6095 |0.5129|0.5744|
