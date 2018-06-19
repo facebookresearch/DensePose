@@ -17,7 +17,7 @@ In this repository, we provide the code to train and evaluate DensePose-RCNN. We
 
 ## Installation
 
-Please find installation instructions for Caffe2 and DensePose in [`INSTALL.md`](INSTALL.md), a docment based on the [Detectron](https://github.com/facebookresearch/Detectron) installation instructions.
+Please find installation instructions for Caffe2 and DensePose in [`INSTALL.md`](INSTALL.md), a document based on the [Detectron](https://github.com/facebookresearch/Detectron) installation instructions.
 
 ## Inference-Training-Testing
 
