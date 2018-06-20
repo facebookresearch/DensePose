@@ -1,0 +1,1 @@
+jupyter nbconvert --to script demo.ipynb  
