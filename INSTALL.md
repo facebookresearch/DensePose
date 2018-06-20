@@ -76,18 +76,18 @@ python2 $DENSEPOSE/detectron/tests/test_spatial_narrow_as_op.py
 Build the custom operators library:
 
 ```
-cd $DETECTRON && make ops
+cd $DENSEPOSE && make ops
 ```
 
 Check that the custom operator tests pass:
 
 ```
-python2 $DETECTRON/detectron/tests/test_zero_even_op.py
+python2 $DENSEPOSE/detectron/tests/test_zero_even_op.py
 ```
 ### Fetch DensePose data.
 Get necessary files to run, train and evaluate DensePose.
 ```
-cd $DETECTRON/DensePoseData
+cd $DENSEPOSE/DensePoseData
 bash get_densepose_uv.sh
 ```
 For training, download the DensePose-COCO dataset:
@@ -102,15 +102,15 @@ bash get_eval_data.sh
 
 Create a symlink for the COCO dataset in your `datasets/data` folder.
 ```
-ln -s /path/to/coco $DETECTRON/detectron/datasets/data/coco
+ln -s /path/to/coco $DENSEPOSE/detectron/datasets/data/coco
 ```
 
 Create symlinks for the DensePose-COCO annotations
 
 ```
-ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
-ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
-ln -s $DETECTRON/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+ln -s $DENSEPOSE/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+ln -s $DENSEPOSE/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
+ln -s $DENSEPOSE/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json $DETECTRON/detectron/datasets/data/coco/annotations/
 ```
 
 Your local COCO dataset copy at `/path/to/coco` should have the following directory structure:
