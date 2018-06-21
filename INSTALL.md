@@ -92,7 +92,7 @@ bash get_densepose_uv.sh
 ```
 For training, download the DensePose-COCO dataset:
 ```
-bash get_densepose_COCO.sh
+bash get_DensePose_COCO.sh
 ```
 For evaluation, get the necessary files:
 ```
