@@ -1,3 +1,8 @@
-![image](https://github.com/insightAI/DensePose/blob/master/demo.png)
-![image](https://github.com/insightAI/DensePose/blob/7dc7e6000ff49dd4470e37efe9c2715c68bff125/pose_IUV.png)
+IUV created by David Duan
+
+![image](https://github.com/insightAI/DensePose/blob/master/demo1.png)
+![image](https://github.com/insightAI/DensePose/blob/master/demo2.png)
+![image](https://github.com/insightAI/DensePose/blob/master/demo3.png)
+![image](https://github.com/insightAI/DensePose/blob/master/demo4.png)
+
 All Rights Reserved
