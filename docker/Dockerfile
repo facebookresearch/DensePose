@@ -26,9 +26,3 @@ RUN make
 
 # [Optional] Build custom ops
 RUN make ops
-
-# Fetch data
-WORKDIR /densepose/DensePoseData
-RUN /bin/bash -c /densepose/DensePoseData/get_DensePose_COCO.sh
-RUN /bin/bash -c /densepose/DensePoseData/get_densepose_uv.sh
-RUN /bin/bash -c /densepose/DensePoseData/get_eval_data.sh
