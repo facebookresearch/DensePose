@@ -18,6 +18,7 @@ build/
 
 *.mat
 *.pkl
+!DensePoseData/demo_data/demo_dp_single_ann.pkl
 *.tar.gz
 *.json
 
