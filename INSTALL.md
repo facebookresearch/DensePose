@@ -144,3 +144,43 @@ Run the image (e.g. for [`BatchPermutationOp test`](tests/test_batch_permutation
 ```
 nvidia-docker run --rm -it densepose:c2-cuda9-cudnn7 python2 detectron/tests/test_batch_permutation_op.py
 ```
+
+To run inference in a docker container based on the prepared docker image,
+one would need to make all the required data accessible within the container.
+For that one should first follow the steps described in [Fetch DensePose Data](#fetch-densepose-data)
+section. One could also prefetch all the necessary weights files used for training / inference.
+Then one should start a container with the host `DensePoseData` and COCO directories mounted:
+
+```
+nvidia-docker run -v $DENSEPOSE/DensePoseData:/denseposedata -v /path/to/coco:/coco -it densepose:c2-cuda9-cudnn7 bash
+```
+
+Within the container one needs to replace the local `DensePoseData` directory with the host one:
+
+```
+mv /densepose/DensePoseData /densepose/DensePoseDataLocal
+ln -s /denseposedata DensePoseData
+```
+
+and perform steps described in [COCO dataset setup](#setting-up-the-coco-dataset):
+
+```
+ln -s /coco /densepose/detectron/datasets/data/coco
+ln -s /densepose/DensePoseData/DensePose_COCO/densepose_coco_2014_minival.json /densepose/detectron/datasets/data/coco/annotations/
+ln -s /densepose/DensePoseData/DensePose_COCO/densepose_coco_2014_train.json /densepose/detectron/datasets/data/coco/annotations/
+ln -s /densepose/DensePoseData/DensePose_COCO/densepose_coco_2014_valminusminival.json /densepose/detectron/datasets/data/coco/annotations/
+```
+
+exit the container and commit the change
+
+```
+docker commit $(docker ps --last 1 -q) densepose:c2-cuda9-cudnn7-wdata
+```
+
+The new image can be used to run inference / training. However, one needs to
+remember to mount `DensePoseData` and COCO directories:
+
+```
+nvidia-docker run --rm -v $DENSEPOSE/DensePoseData:/denseposedata -v /path/to/coco:/coco -it densepose:c2-cuda9-cudnn7-wdata <inference_or_training_command>
+```
+
