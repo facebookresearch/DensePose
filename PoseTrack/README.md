@@ -5,10 +5,12 @@ We introduce the DensePose-Posetrack dataset, which consists of videos of multip
   <img src="https://drive.google.com/uc?export=view&id=1fed2Xvy2G6t4V_ICsEJIm-PaJ8o-e0Ws" width="700px" />
 </div>
 
-Please first follow the [INSTALL.md](https://github.com/facebookresearch/DensePose/blob/master/INSTALL.md) and [GETTING_STARTED.md](https://github.com/facebookresearch/DensePose/blob/master/GETTING_STARTED.md), to install and run the DensePose inference and training. This documents follows by instructions to download and evaluate on the DensePose-PoseTrack dataset.
+Please first follow the [INSTALL.md](https://github.com/facebookresearch/DensePose/blob/master/INSTALL.md) and [GETTING_STARTED.md](https://github.com/facebookresearch/DensePose/blob/master/GETTING_STARTED.md), to install and run the DensePose inference and training. Herein, we provide instructions to download and evaluate on the DensePose-PoseTrack dataset.
 
 ### Fetch DensePose-PoseTrack dataset
-Note that the DensePose-PoseTrack dataset is distributed under [NonCommercial Creative Commons](https://creativecommons.org/licenses/by-nc/2.0/) license.
+
+To download the images of the original PoseTrack dataset, please refer to the posetrack webpage: https://posetrack.net. Note that we have used the keypoints provided in the PoseTrack dataset to form the DensePose-PoseTrack dataset. Our dense correspondence annotations are distributed under [NonCommercial Creative Commons](https://creativecommons.org/licenses/by-nc/2.0/) license.
+
 To downoad, run:
 ```
 cd $DENSEPOSE/PoseTrack
