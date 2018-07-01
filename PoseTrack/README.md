@@ -16,6 +16,12 @@ bash get_DensePose_PoseTrack.sh
 ```
 This script downloads *.json files that contains all annotations along with files that only contains annotations for images with densepose annotations. The latter is used during evaluation.
 
+Visualization of the DensePose-PoseTrack annotations are demonstrated in the [DensePose-PoseTrack-Visualize.ipynb](https://github.com/facebookresearch/DensePose/blob/master/PoseTrack/DensePose-PoseTrack-Visualize.ipynb):
+
+<div align="center">
+  <img src="https://drive.google.com/uc?export=view&id=1jUNl07Rw_Y7IRvZimaChfQPDIDkWqxzc" width="600px" />
+</div>
+
 
 ## Setting-up the PoseTrack dataset.
 
