@@ -155,6 +155,24 @@ _DATASETS = {
         _ANN_FN:
             _DATA_DIR + '/coco/annotations/image_info_test-dev2015.json'
     },
+    'dense_posetrack_2017_train': {
+        _IM_DIR:
+            _DATA_DIR + '/posetrack',
+        _ANN_FN:
+            _DATA_DIR + '/posetrack/densepose_only_posetrack_train2017.json',
+    },
+    'dense_posetrack_2017_val': {
+        _IM_DIR:
+            _DATA_DIR + '/posetrack',
+        _ANN_FN:
+            _DATA_DIR + '/posetrack/densepose_only_posetrack_val2017.json',
+    },
+    'dense_posetrack_2017_test': {
+        _IM_DIR:
+            _DATA_DIR + '/posetrack',
+        _ANN_FN:
+            _DATA_DIR + '/posetrack/densepose_posetrack_test2017.json',
+    },
     'dense_coco_2014_train': {
         _IM_DIR:
             _DATA_DIR + '/coco/train2014',

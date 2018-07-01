@@ -237,32 +237,35 @@ def test_net(
         empty_results(num_classes, num_images)
     timers = defaultdict(Timer)
     for i, entry in enumerate(roidb):
-        if cfg.TEST.PRECOMPUTED_PROPOSALS:
-            # The roidb may contain ground-truth rois (for example, if the roidb
-            # comes from the training or val split). We only want to evaluate
-            # detection on the *non*-ground-truth rois. We select only the rois
-            # that have the gt_classes field set to 0, which means there's no
-            # ground truth.
-            box_proposals = entry['boxes'][entry['gt_classes'] == 0]
-            if len(box_proposals) == 0:
-                continue
+        if 'has_no_densepose' in entry.keys():
+            pass
         else:
-            # Faster R-CNN type models generate proposals on-the-fly with an
-            # in-network RPN; 1-stage models don't require proposals.
-            box_proposals = None
+            if cfg.TEST.PRECOMPUTED_PROPOSALS:
+                # The roidb may contain ground-truth rois (for example, if the roidb
+                # comes from the training or val split). We only want to evaluate
+                # detection on the *non*-ground-truth rois. We select only the rois
+                # that have the gt_classes field set to 0, which means there's no
+                # ground truth.
+                box_proposals = entry['boxes'][entry['gt_classes'] == 0]
+                if len(box_proposals) == 0:
+                    continue
+            else:
+                # Faster R-CNN type models generate proposals on-the-fly with an
+                # in-network RPN; 1-stage models don't require proposals.
+                box_proposals = None
 
-        im = cv2.imread(entry['image'])
-        with c2_utils.NamedCudaScope(gpu_id):
-            cls_boxes_i, cls_segms_i, cls_keyps_i,cls_bodys_i = \
-                im_detect_all(model, im, box_proposals, timers)
+            im = cv2.imread(entry['image'])
+            with c2_utils.NamedCudaScope(gpu_id):
+                cls_boxes_i, cls_segms_i, cls_keyps_i,cls_bodys_i = \
+                    im_detect_all(model, im, box_proposals, timers)
 
-        extend_results(i, all_boxes, cls_boxes_i)
-        if cls_segms_i is not None:
-            extend_results(i, all_segms, cls_segms_i)
-        if cls_keyps_i is not None:
-            extend_results(i, all_keyps, cls_keyps_i)
-        if cls_bodys_i is not None:
-            extend_results(i, all_bodys, cls_bodys_i)
+            extend_results(i, all_boxes, cls_boxes_i)
+            if cls_segms_i is not None:
+                extend_results(i, all_segms, cls_segms_i)
+            if cls_keyps_i is not None:
+                extend_results(i, all_keyps, cls_keyps_i)
+            if cls_bodys_i is not None:
+                extend_results(i, all_bodys, cls_bodys_i)
 
         if i % 10 == 0:  # Reduce log file size
             ave_total_time = np.sum([t.average_time for t in timers.values()])
