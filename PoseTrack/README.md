@@ -1,5 +1,5 @@
 #  DensePose-PoseTrack
-We introduce the DensePose-Posetrack dataset, which consists of videos of multiple personcontain rapid motions, occlusions and scale variation which leads to a very challenging correspondence task. DensePose-PoseTrack will be a part of the [ECCV 2018 - POSETRACK CHALLENGE](https://posetrack.net/workshops/eccv2018/).
+We introduce the DensePose-Posetrack dataset, which consists of videos of multiple persons containing rapid motions, occlusions and scale variations which leads to a very challenging correspondence task. DensePose-PoseTrack will be a part of the [ECCV 2018 - POSETRACK CHALLENGE](https://posetrack.net/workshops/eccv2018/).
 
 <div align="center">
   <img src="https://drive.google.com/uc?export=view&id=1fed2Xvy2G6t4V_ICsEJIm-PaJ8o-e0Ws" width="700px" />
