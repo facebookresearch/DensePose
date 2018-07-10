@@ -19,7 +19,7 @@ python2 tools/infer_simple.py \
     DensePoseData/demo_data/demo_im.jpg
 ```
 
-DensePose should automatically download the model from the URL specified by the `--wts` argument. This tool will output visualizations of the detections in PDF format in the directory specified by `--output-dir`. Also, it will output two images `*_IUV.png` and `*_INDS.png` which consists of I,U, V channels and segmented instance indices respectively. Please see [`notebooks/DensePose-RCNN-Visualize-Results.ipynb`](['notebooks/DensePose-RCNN-Visualize-Results.ipynb']) for the visualizations of these outputs.
+DensePose should automatically download the model from the URL specified by the `--wts` argument. This tool will output visualizations of the detections in PDF format in the directory specified by `--output-dir`. Also, it will output two images `*_IUV.png` and `*_INDS.png` which consists of I,U, V channels and segmented instance indices respectively. Please see [`notebooks/DensePose-RCNN-Visualize-Results.ipynb`](['https://github.com/facebookresearch/DensePose/blob/master/notebooks/DensePose-RCNN-Visualize-Results.ipynb']) for the visualizations of these outputs.
 
 
 ## Testing with Pretrained Models
