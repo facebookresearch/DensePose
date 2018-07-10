@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 # This is a modified version of cocoeval.py where we also have the densepose evaluation.
 
-__author__ = 'tsungyi' 
+__author__ = 'tsungyi'
 
 import numpy as np
 import datetime
@@ -18,6 +18,8 @@ import pickle
 from scipy.io import loadmat
 import scipy.spatial.distance as ssd
 import os
+import itertools
+
 class denseposeCOCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.
     #
@@ -93,7 +95,8 @@ class denseposeCOCOeval:
             self.params.catIds = sorted(cocoGt.getCatIds())
         if iouType == 'uv':
             self.sigma = sigma
-            #self._loadPointGT()
+        self.ignoreThrBB = 0.7
+        self.ignoreThrUV = 0.9
 
     def _loadGEval(self):
         print('Loading densereg GT..')
@@ -130,12 +133,61 @@ class denseposeCOCOeval:
         Prepare ._gts and ._dts for evaluation based on params
         :return: None
         '''
+
         def _toMask(anns, coco):
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
                 ann['segmentation'] = rle
+
+        def _getIgnoreRegion(iid, coco):
+            img = coco.imgs[iid]
+
+            if not 'ignore_regions_x' in img.keys():
+                return None
+
+            if len(img['ignore_regions_x']) == 0:
+                return None
+
+            rgns_merged = []
+            for region_x, region_y in zip(img['ignore_regions_x'], img['ignore_regions_y']):
+                rgns = [iter(region_x), iter(region_y)]
+                rgns_merged.append(list(it.next() for it in itertools.cycle(rgns)))
+            rles = maskUtils.frPyObjects(rgns_merged, img['height'], img['width'])
+            rle = maskUtils.merge(rles)
+            return maskUtils.decode(rle)
+
+        def _checkIgnore(dt, iregion):
+            if iregion is None:
+                return True
+
+            bb = np.array(dt['bbox']).astype(np.int)
+            x1,y1,x2,y2 = bb[0],bb[1],bb[0]+bb[2],bb[1]+bb[3]
+            x2 = min([x2,iregion.shape[1]])
+            y2 = min([y2,iregion.shape[0]])
+
+            if bb[2]* bb[3] == 0:
+                return False
+
+            crop_iregion = iregion[y1:y2, x1:x2]
+
+            if crop_iregion.sum() == 0:
+                return True
+
+            if not 'uv' in dt.keys(): # filtering boxes
+                return crop_iregion.sum()/bb[2]/bb[3] < self.ignoreThrBB
+
+            # filtering UVs
+            ignoremask = np.require(crop_iregion, requirements=['F'])
+            uvmask = np.require(np.asarray(dt['uv'][0]>0), dtype = np.uint8,
+                    requirements=['F'])
+            uvmask_ = maskUtils.encode(uvmask)
+            ignoremask_ = maskUtils.encode(ignoremask)
+            uviou = maskUtils.iou([uvmask_], [ignoremask_], [1])[0]
+            return uviou < self.ignoreThrUV
+
         p = self.params
+
         if p.useCats:
             gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
             dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
@@ -151,6 +203,7 @@ class denseposeCOCOeval:
         if p.iouType == 'segm':
             _toMask(gts, self.cocoGt)
             _toMask(dts, self.cocoDt)
+
         # set ignore flag
         for gt in gts:
             gt['ignore'] = gt['ignore'] if 'ignore' in gt else 0
@@ -162,10 +215,18 @@ class denseposeCOCOeval:
 
         self._gts = defaultdict(list)       # gt for evaluation
         self._dts = defaultdict(list)       # dt for evaluation
+        self._igrgns = defaultdict(list)
+
         for gt in gts:
-            self._gts[gt['image_id'], gt['category_id']].append(gt)
+            iid = gt['image_id']
+            if not iid in self._igrgns.keys():
+                self._igrgns[iid] = _getIgnoreRegion(iid, self.cocoGt)
+            if _checkIgnore(gt, self._igrgns[iid]):
+                self._gts[iid, gt['category_id']].append(gt)
         for dt in dts:
-            self._dts[dt['image_id'], dt['category_id']].append(dt)
+            if _checkIgnore(dt, self._igrgns[dt['image_id']]):
+                self._dts[dt['image_id'], dt['category_id']].append(dt)
+
         self.evalImgs = defaultdict(list)   # per-image per-category evaluation results
         self.eval = {}                  # accumulated evaluation results
 
@@ -327,7 +388,7 @@ class denseposeCOCOeval:
                         px[pts==-1] = 0; py[pts==-1] = 0;
                         ipoints = dt['uv'][0, px, py]
                         upoints = dt['uv'][1, px, py]/255. # convert from uint8 by /255.
-                        vpoints = dt['uv'][2, px, py]/255. 
+                        vpoints = dt['uv'][2, px, py]/255.
                         ipoints[pts==-1] = 0
                         ## Find closest vertices in subsampled mesh.
                         cVerts, cVertsGT = self.findAllClosestVerts(gt, upoints, vpoints, ipoints)
@@ -338,7 +399,7 @@ class denseposeCOCOeval:
                         if len(dist)>0:
                             ogps = ogps / len(dist)
                     ious[i, j] = ogps
-                    
+
         gbb = [gt['bbox'] for gt in g]
         dbb = [dt['bbox'] for dt in d]
 
@@ -353,7 +414,6 @@ class denseposeCOCOeval:
         :return: dict (single image results)
         '''
 
-        #print('Evaluating..', imgId)
         p = self.params
         if p.useCats:
             gt = self._gts[imgId,catId]
@@ -794,6 +854,3 @@ class Params:
         self.iouType = iouType
         # useSegm is deprecated
         self.useSegm = None
-
-
-
