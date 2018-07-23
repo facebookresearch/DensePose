@@ -28,7 +28,7 @@ file into a zip file named `densepose_[subset]_[alg]_results.zip`.
 
 5. To submit your zipped result file to the COCO DensePose Challenge, click on
 the “Participate” tab on the
-[CodaLab evaluation server](https://competitions.codalab.org/competitions/19543) page.
+[CodaLab evaluation server](https://competitions.codalab.org/competitions/19636) page.
 When you select “Submit / View Results” on the left panel, you will be able to choose
 the subset. Please fill in the required fields and click “Submit”. A pop-up will
 prompt you to select the results zip file for upload. After the file is uploaded
