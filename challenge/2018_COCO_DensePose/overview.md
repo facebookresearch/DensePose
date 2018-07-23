@@ -28,7 +28,8 @@ Annotations on train (
 ) and [val](https://s3.amazonaws.com/densepose/densepose_coco_2014_minival.json)
 with over 48,000 people are publicly available.
 
-Evaluation server for the 2018 task is [open](evaluation.md).
+Evaluation server for the 2018 task is
+[open](https://competitions.codalab.org/competitions/19636).
 
 ## Dates
 
@@ -59,7 +60,8 @@ details is available on the
 [guidelines](http://cocodataset.org/#guidelines) page,
 please be sure to review it carefully prior to participating.
 Results in the [correct format](results_format.md) must be
-[uploaded](upload.md) to the [evaluation server](evaluation.md).
+[uploaded](upload.md) to the
+[evaluation server](https://competitions.codalab.org/competitions/19636).
 The [evaluation](evaluation.md) page lists detailed information
 regarding how results will be evaluated. Challenge participants
 with the most successful and innovative methods will be invited
