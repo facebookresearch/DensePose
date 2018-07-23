@@ -33,7 +33,7 @@ coordinates scaled to the range `0-255`.
 An example of code that generates results in the form of a `pkl` file can
 be found in
 [json_dataset_evaluator.py](https://github.com/facebookresearch/DensePose/blob/master/detectron/datasets/json_dataset_evaluator.py).
-We also provide an [example script](encode_results_for_competition.py) to convert
+We also provide an [example script](../encode_results_for_competition.py) to convert
 dense pose estimation results stored in a `pkl` file into a PNG-compressed
 JSON file.
 
