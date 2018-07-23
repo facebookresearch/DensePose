@@ -125,7 +125,10 @@ class denseposeCOCOeval:
         for k, v in f.items():
             arrays[k] = np.array(v)
         self.Pdist_matrix = arrays['Pdist_matrix']
-
+        self.Part_ids = np.array(  SMPL_subdiv['Part_ID_subdiv'].squeeze())
+        self.Mean_Distances = np.array( [0, 0.351, 0.107, 0.126,0.237,0.173,0.142,0.128,0.150] )
+        self.CoarseParts = np.array( [ 0,  1,  1,  2,  2,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  
+             6,  6,  6,  6,  7,  7,  7,  7,  8,  8] )
         print('Loaded')
 
     def _prepare(self):
@@ -396,8 +399,12 @@ class denseposeCOCOeval:
                         dist = self.getDistances(cVertsGT, cVerts)
                         ## Compute the Ogps measure.
                         ogps = np.sum(np.exp(-(dist**2)/(2*(sigma**2))))
+                        #
+                        Current_Mean_Distances  = self.Mean_Distances[ self.CoarseParts[ self.Part_ids [ cVertsGT[cVertsGT>0].astype(int)-1] ]  ]
+                        ogps_values = np.exp(-(dist**2)/(2*(Current_Mean_Distances**2)))
+                        #
                         if len(dist)>0:
-                            ogps = ogps / len(dist)
+                            ogps = np.sum(ogps_values)/ len(dist)
                     ious[i, j] = ogps
 
         gbb = [gt['bbox'] for gt in g]
@@ -767,16 +774,20 @@ class denseposeCOCOeval:
                 D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
                 ClosestVertsGT[I_gt==(i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
         #
-        ClosestVertsTransformed = self.PDIST_transform[ClosestVerts.astype(int)-1]
-        ClosestVertsGTTransformed = self.PDIST_transform[ClosestVertsGT.astype(int)-1]
-        #
-        ClosestVertsTransformed[ClosestVerts<0] = 0
-        ClosestVertsGTTransformed[ClosestVertsGT<0] = 0
-        #
-        return ClosestVertsTransformed, ClosestVertsGTTransformed
+        return ClosestVerts, ClosestVertsGT
 
 
     def getDistances(self, cVertsGT, cVerts):
+        
+        ClosestVertsTransformed = self.PDIST_transform[cVerts.astype(int)-1]
+        ClosestVertsGTTransformed = self.PDIST_transform[cVertsGT.astype(int)-1]
+        #
+        ClosestVertsTransformed[cVerts<0] = 0
+        ClosestVertsGTTransformed[cVertsGT<0] = 0
+        #
+        cVertsGT = ClosestVertsGTTransformed
+        cVerts = ClosestVertsTransformed
+        #
         n = 27554
         dists = []
         for d in range(len(cVertsGT)):

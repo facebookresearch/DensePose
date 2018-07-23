@@ -32,3 +32,6 @@ detectron/utils/cython_*.c
 
 notebooks_old/*
 configs_old/*
+
+
+.nfs*
