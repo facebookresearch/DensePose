@@ -42,7 +42,7 @@ where <a href="https://www.codecogs.com/eqnedit.php?latex=&space;d(\hat{p}_i,p_i
 (<a href="https://www.codecogs.com/eqnedit.php?latex=p_i" target="_blank"><img src="https://latex.codecogs.com/gif.latex?p_i" title="https://www.codecogs.com/eqnedit.php?latex=p_i" /></a>)
 human body surface points and
 <a href="https://www.codecogs.com/eqnedit.php?latex=\kappa(p_i)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\kappa(p_i)" title="https://www.codecogs.com/eqnedit.php?latex=\kappa(p_i)" /></a>
-is a per-part normalization factor based on annotator errors for a specific part.
+is a per-part normalization factor, defined as the mean geodesic distance between points on the part. Please note that due to the new per-part normalization the AP numbers do not match those reported in the paper, which are obtained via fixed K = 0.255.
 
 ## Metrics
 

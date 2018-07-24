@@ -126,9 +126,12 @@ class denseposeCOCOeval:
             arrays[k] = np.array(v)
         self.Pdist_matrix = arrays['Pdist_matrix']
         self.Part_ids = np.array(  SMPL_subdiv['Part_ID_subdiv'].squeeze())
+        # Mean geodesic distances for parts.
         self.Mean_Distances = np.array( [0, 0.351, 0.107, 0.126,0.237,0.173,0.142,0.128,0.150] )
+        # Coarse Part labels.
         self.CoarseParts = np.array( [ 0,  1,  1,  2,  2,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  
              6,  6,  6,  6,  7,  7,  7,  7,  8,  8] )
+        
         print('Loaded')
 
     def _prepare(self):
@@ -398,9 +401,9 @@ class denseposeCOCOeval:
                         ## Get pairwise geodesic distances between gt and estimated mesh points.
                         dist = self.getDistances(cVertsGT, cVerts)
                         ## Compute the Ogps measure.
-                        ogps = np.sum(np.exp(-(dist**2)/(2*(sigma**2))))
-                        #
+                        # Find the mean geodesic normalization distance for each GT point, based on which part it is on.
                         Current_Mean_Distances  = self.Mean_Distances[ self.CoarseParts[ self.Part_ids [ cVertsGT[cVertsGT>0].astype(int)-1] ]  ]
+                        # Compute gps
                         ogps_values = np.exp(-(dist**2)/(2*(Current_Mean_Distances**2)))
                         #
                         if len(dist)>0:

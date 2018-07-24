@@ -6,7 +6,10 @@ you to participate in the challenges and compare results to the
 state-of-the-art on the public leaderboards. Note that you can obtain results
 on val by running the
 [evaluation code](https://github.com/facebookresearch/DensePose/blob/master/detectron/datasets/densepose_cocoeval.py)
-locally; submitting to the evaluation server provides results on the val and
+locally. One can also take advantage of the
+[vkhalidov/densepose-codalab](https://hub.docker.com/r/vkhalidov/densepose-codalab/)
+docker image which was tailored specifically for evaluation.
+Submitting to the evaluation server provides results on the val and
 test sets. We now give detailed instructions for submitting to the evaluation
 server:
 
@@ -19,13 +22,13 @@ entering the COCO challenges and using the test sets.
 [results format](results_format.md) for the challenge you wish to enter.
 
 4. File naming: the JSON file should be named `densepose_[subset]_[alg]_results.json`.
-Replace `[type]` with the challenge type, `[subset]` with the subset you are using
-(`val` or `test`), and `[alg]` with your algorithm name. Finally place the JSON
+Replace `[subset]` with the subset you are using (`val` or `test`),
+and `[alg]` with your algorithm name. Finally, place the JSON
 file into a zip file named `densepose_[subset]_[alg]_results.zip`.
 
 5. To submit your zipped result file to the COCO DensePose Challenge, click on
 the “Participate” tab on the
-[CodaLab evaluation server](https://competitions.codalab.org/competitions/19543) page.
+[CodaLab evaluation server](https://competitions.codalab.org/competitions/19636) page.
 When you select “Submit / View Results” on the left panel, you will be able to choose
 the subset. Please fill in the required fields and click “Submit”. A pop-up will
 prompt you to select the results zip file for upload. After the file is uploaded
