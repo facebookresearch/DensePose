@@ -13,9 +13,11 @@ The RPN results are obtained using the models provided in the Detectron model-zo
 
 | Model | AP  |  AP50 | AP75  | APm  |APl |
 |-----|-----|---    |---    |---   |--- |
-| [`ResNet50_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x.pkl)| 0.5119 |0.8538|0.5409 |0.4532|0.5322|
-| [`ResNet50_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl)|0.5221 |0.8556|0.5581| 0.4746|0.5422|
-| [`ResNet101_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x.pkl)|0.5461| 0.8695|0.5828 |0.4871|0.5651|
-| [`ResNet101_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl)|0.5598 |0.8754|0.6095 |0.5129|0.5744|
-| [`ResNet101_FPN_32x8d_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_32x8d_s1x.pkl)|0.5584 | 0.8690|0.6029 |0.5074|0.5767|
-| [`ResNet101_FPN_32x8d_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_32x8d_s1x-e2e.pkl)|0.6027 | 0.8989|0.6684 |0.5515|0.6150|
+| [`ResNet50_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x.pkl)| 0.4748 |0.8368|0.4820 |0.4262|0.4948|
+| [`ResNet50_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl)|0.4892 |0.8490|0.5078| 0.4384|0.5059|
+| [`ResNet101_FPN_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x.pkl)|0.4978| 0.8521|0.5276 |0.4373|0.5164|
+| [`ResNet101_FPN_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl)|0.5147 |0.8660|0.5601 |0.4716|0.5291|
+| [`ResNet101_FPN_32x8d_s1x`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_32x8d_s1x.pkl)|0.5095 | 0.8590|0.5381 |0.4605|0.5272|
+| [`ResNet101_FPN_32x8d_s1x-e2e`](https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_32x8d_s1x-e2e.pkl)|0.5554 | 0.8908|0.6080 |0.5067|0.5676|
+
+Please note that due to the new per-part normalization the AP numbers do not match those reported in the paper, which are obtained with global normalization factor `K = 0.255`.
