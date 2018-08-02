@@ -27,6 +27,8 @@ Annotations on train (
 [train 2](https://s3.amazonaws.com/densepose/densepose_coco_2014_valminusminival.json)
 ) and [val](https://s3.amazonaws.com/densepose/densepose_coco_2014_minival.json)
 with over 48,000 people are publicly available.
+[Test set](https://s3.amazonaws.com/densepose/densepose_coco_2014_test.json)
+with the list of images is also available for download.
 
 Evaluation server for the 2018 task is
 [open](https://competitions.codalab.org/competitions/19636).
