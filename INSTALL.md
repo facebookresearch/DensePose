@@ -67,7 +67,7 @@ Set up Python modules:
 cd $DENSEPOSE && make
 ```
 
-Check that Detectron tests pass (e.g. for [`SpatialNarrowAsOp test`](tests/test_spatial_narrow_as_op.py)):
+Check that Detectron tests pass (e.g. for [`SpatialNarrowAsOp test`](detectron/tests/test_spatial_narrow_as_op.py)):
 
 ```
 python2 $DENSEPOSE/detectron/tests/test_spatial_narrow_as_op.py
