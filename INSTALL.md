@@ -139,7 +139,7 @@ cd $DENSEPOSE/docker
 docker build -t densepose:c2-cuda9-cudnn7 .
 ```
 
-Run the image (e.g. for [`BatchPermutationOp test`](tests/test_batch_permutation_op.py)):
+Run the image (e.g. for [`BatchPermutationOp test`](detectron/tests/test_batch_permutation_op.py)):
 
 ```
 nvidia-docker run --rm -it densepose:c2-cuda9-cudnn7 python2 detectron/tests/test_batch_permutation_op.py
