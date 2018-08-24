@@ -39,5 +39,6 @@ head models for each individual task.
 | keypoint | 0.5871 | 0.8452 | 0.6309 | 0.4611 | 0.6931 |
 | densepose | 0.4726 | 0.8480 | 0.4750 | 0.3851 | 0.4929 |
 
-[config](configs/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.yaml),
-[model](https://s3.amazonaws.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.pkl)
+([config](configs/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.yaml),
+[model](https://s3.amazonaws.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.pkl),
+[md5](https://s3.amazonaws.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.md5))
