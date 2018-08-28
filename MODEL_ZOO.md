@@ -30,14 +30,14 @@ that performs multiple tasks
 using the same backbone architecture (ResNet-50) and containing several
 heads for dense pose, mask and keypoints estimation. We note that this
 example is provided purely for illustrative purposes and the performance
-of the model is not tuned, so it occurs to be inferior compared to single
-head models for each individual task.
+of the model is not tuned. As an alternative, one can always use
+independent models for individual tasks.
 
 | Task | AP  |  AP50 | AP75  | APm  |APl |
 |-----|-----|---    |---    |---   |--- |
-| mask | 0.4708 | 0.8021 | 0.5002 | 0.4159 | 0.6227 |
-| keypoint | 0.5871 | 0.8452 | 0.6309 | 0.4611 | 0.6931 |
-| densepose | 0.4726 | 0.8480 | 0.4750 | 0.3851 | 0.4929 |
+| mask | 0.4903 | 0.8160 | 0.5300 | 0.4379 | 0.6417 |
+| keypoint | 0.6159 | 0.8614 | 0.6665 | 0.4847 | 0.7233 |
+| densepose | 0.5075 | 0.8606 | 0.5373 | 0.4356 | 0.5265 |
 
 ([config](configs/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.yaml),
 [model](https://s3.amazonaws.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.pkl),
