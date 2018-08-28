@@ -1,0 +1,103 @@
+MODEL:
+  TYPE: generalized_rcnn
+  CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
+  NUM_CLASSES: 2
+  FASTER_RCNN: True
+  BODY_UV_ON: True
+  MASK_ON: True
+  KEYPOINTS_ON: True
+NUM_GPUS: 8
+SOLVER:
+  WEIGHT_DECAY: 0.0001
+  LR_POLICY: steps_with_decay
+  GAMMA: 0.1
+  WARM_UP_ITERS: 3000
+  WARM_UP_FACTOR: 0.0000001
+  # Linear scaling rule:
+  # 1 GPU:
+  #   BASE_LR: 0.00025
+  #   MAX_ITER: 720000
+  #   STEPS: [0, 480000, 640000]
+  # 2 GPUs:
+  #   BASE_LR: 0.0005
+  #   MAX_ITER: 360000
+  #   STEPS: [0, 240000, 320000]
+  # 4 GPUs:
+  #  BASE_LR: 0.001
+  #  MAX_ITER: 180000
+  #  STEPS: [0, 120000, 160000]
+  #8 GPUs:
+  BASE_LR: 0.002
+  MAX_ITER: 230000
+  STEPS: [0, 150000, 200000]
+FPN:
+  FPN_ON: True
+  MULTILEVEL_ROIS: True
+  MULTILEVEL_RPN: True
+FAST_RCNN:
+  ROI_BOX_HEAD: fast_rcnn_heads.add_roi_2mlp_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2
+BODY_UV_RCNN:
+  ROI_HEAD: body_uv_rcnn_heads.add_roi_body_uv_head_v1convX
+  NUM_STACKED_CONVS: 8
+  NUM_PATCHES: 24
+  USE_DECONV_OUTPUT: True
+  CONV_INIT: MSRAFill
+  CONV_HEAD_DIM: 512
+  UP_SCALE: 2
+  HEATMAP_SIZE: 56
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2
+  ##
+  # Loss weights for annotation masks.(14 Parts)
+  INDEX_WEIGHTS : 2.0
+  # Loss weights for surface parts. (24 Parts)  
+  PART_WEIGHTS : 0.3
+  # Loss weights for UV regression.
+  POINT_REGRESSION_WEIGHTS : 0.1
+  ##
+  BODY_UV_IMS: True 
+MRCNN:
+  ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
+  RESOLUTION: 28
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2  # default 0
+  DILATION: 1  # default 2
+  CONV_INIT: MSRAFill  # default: GaussianFill
+KRCNN:
+  ROI_KEYPOINTS_HEAD: keypoint_rcnn_heads.add_roi_pose_head_v1convX
+  NUM_STACKED_CONVS: 8
+  NUM_KEYPOINTS: 17
+  USE_DECONV_OUTPUT: True
+  CONV_INIT: MSRAFill
+  CONV_HEAD_DIM: 512
+  UP_SCALE: 2
+  HEATMAP_SIZE: 56  # ROI_XFORM_RESOLUTION (14) * UP_SCALE (2) * USE_DECONV_OUTPUT (2)
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2
+  KEYPOINT_CONFIDENCE: bbox
+TRAIN:
+  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/ImageNetPretrained/MSRA/R-50.pkl
+  DATASETS: ('dense_coco_2014_train', 'dense_coco_2014_valminusminival')
+  SCALES: (640, 672, 704, 736, 768, 800)
+  MAX_SIZE: 1333
+  IMS_PER_BATCH: 1
+  BATCH_SIZE_PER_IM: 512
+  USE_FLIPPED: True
+  RPN_PRE_NMS_TOP_N: 2000  # Per FPN level	
+TEST:
+  DATASETS: ('dense_coco_2014_minival',)
+  PROPOSAL_LIMIT: 1000
+  SCALE: 800
+  MAX_SIZE: 1333
+  NMS: 0.5
+  FORCE_JSON_DATASET_EVAL: True
+  DETECTIONS_PER_IM: 20
+  RPN_PRE_NMS_TOP_N: 1000  # Per FPN level 
+  RPN_POST_NMS_TOP_N: 1000
+OUTPUT_DIR: ''
