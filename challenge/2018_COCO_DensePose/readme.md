@@ -23,11 +23,11 @@ The COCO train, validation, and test sets, containing more than 39,000 images
 and 56,000 person instances labeled with DensePose annotations are available
 for [download](http://cocodataset.org/#download).
 Annotations on train (
-[train 1](https://s3.amazonaws.com/densepose/densepose_coco_2014_train.json),
-[train 2](https://s3.amazonaws.com/densepose/densepose_coco_2014_valminusminival.json)
-) and [val](https://s3.amazonaws.com/densepose/densepose_coco_2014_minival.json)
+[train 1](https://dl.fbaipublicfiles.com/densepose/densepose_coco_2014_train.json),
+[train 2](https://dl.fbaipublicfiles.com/densepose/densepose_coco_2014_valminusminival.json)
+) and [val](https://dl.fbaipublicfiles.com/densepose/densepose_coco_2014_minival.json)
 with over 48,000 people are publicly available.
-[Test set](https://s3.amazonaws.com/densepose/densepose_coco_2014_test.json)
+[Test set](https://dl.fbaipublicfiles.com/densepose/densepose_coco_2014_test.json)
 with the list of images is also available for download.
 
 Evaluation server for the 2018 task is
