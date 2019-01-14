@@ -41,4 +41,4 @@ independent models for individual tasks.
 
 ([config](configs/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.yaml),
 [model](https://dl.fbaipublicfiles.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.pkl),
-[md5](https://dl.fbaipublicfiles.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.md5))
+[md5](https://dl.fbaipublicfiles.com/densepose/DensePoseKeyPointsMask_ResNet50_FPN_s1x-e2e.pkl.md5sum))
