@@ -58,7 +58,7 @@ To demonstrate the evaluation, we use a DensePose-RCNN with a ResNet-50 trunk th
 cd $DENSEPOSE
 python2 tools/test_net.py \
     --cfg PoseTrack/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml \
-    TEST.WEIGHTS https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl \
+    TEST.WEIGHTS https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl \
     NUM_GPUS 1
 ```
 The evaluation of this baseline network should yield `Bounding Box AP: 0.4438` and `DensePose AP: 0.2698`.

@@ -15,7 +15,7 @@ python2 tools/infer_simple.py \
     --cfg configs/DensePose_ResNet101_FPN_s1x-e2e.yaml \
     --output-dir DensePoseData/infer_out/ \
     --image-ext jpg \
-    --wts https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
+    --wts https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
     DensePoseData/demo_data/demo_im.jpg
 ```
 
@@ -30,7 +30,7 @@ This example shows how to run an end-to-end trained DensePose-RCNN model from th
 ```
 python2 tools/test_net.py \
     --cfg configs/DensePose_ResNet101_FPN_s1x-e2e.yaml \
-    TEST.WEIGHTS https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
+    TEST.WEIGHTS https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
     NUM_GPUS 1
 ```
 
