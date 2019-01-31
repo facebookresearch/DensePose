@@ -376,45 +376,50 @@ def vis_one_image(
                     line, color=colors[len(kp_lines) + 1], linewidth=1.0,
                     alpha=0.7)
                 
-    #   DensePose Visualization Starts!!
-    ##  Get full IUV image out 
+    ### DensePose Visualization Starts!!
+    # get full IUV image outputs for all bboxes 
     IUV_fields = body_uv[1]
-    #
-    All_Coords = np.zeros(im.shape)
-    All_inds = np.zeros([im.shape[0],im.shape[1]])
-    K = 26
-    ##
-    inds = np.argsort(boxes[:,4])
-    ##
+    # initialize IUV output and INDS output images with zeros
+    All_coords = np.zeros(im.shape, dtype=np.float32)  # shape: (im_height, im_width, 3)
+    All_inds = np.zeros([im.shape[0], im.shape[1]], dtype=np.float32)  # shape: (im_height, im_width)
+
+    # display in smallest to largest order based on class scores of detected persons
+    inds = np.argsort(boxes[:, 4])
     for i, ind in enumerate(inds):
-        entry = boxes[ind,:]
-        if entry[4] > 0.65:
-            entry=entry[0:4].astype(int)
-            ####
+        score = boxes[ind, 4]
+        bbox = boxes[ind, :4]
+        if score > 0.65:
+            # top left corner (x1, y1) of current bbox in image space
+            x1, y1 = boxes[ind, :2].astype(int)
+            # get IUV output for current bbox
             output = IUV_fields[ind]
-            ####
-            All_Coords_Old = All_Coords[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2],:]
-            All_Coords_Old[All_Coords_Old==0]=output.transpose([1,2,0])[All_Coords_Old==0]
-            All_Coords[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2],:]= All_Coords_Old
-            ###
-            CurrentMask = (output[0,:,:]>0).astype(np.float32)
-            All_inds_old = All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]]
-            All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*i
-            All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]] = All_inds_old
-    #
-    All_Coords[:,:,1:3] = 255. * All_Coords[:,:,1:3]
-    All_Coords[All_Coords>255] = 255.
-    All_Coords = All_Coords.astype(np.uint8)
+            out_height, out_width = output.shape[1:3]
+            
+            # get IUV of current bbox temporarily and then fill it to IUV output image
+            All_coords_tmp = All_coords[y1:y1 + out_height, x1:x1 + out_width]
+            All_coords_tmp[All_coords_tmp == 0] = output.transpose([1, 2, 0])[All_coords_tmp == 0]
+            All_coords[y1:y1 + out_height, x1:x1 + out_width] = All_coords_tmp
+            
+            # get human-body FG mask indices
+            index_UV = output[0]
+            CurrentMask = (index_UV > 0).astype(np.float32)
+            All_inds_tmp = All_inds[y1:y1 + out_height, x1:x1 + out_width]
+            All_inds_tmp[All_inds_tmp == 0] = CurrentMask[All_inds_tmp == 0] * i
+            All_inds[y1:y1 + out_height, x1:x1 + out_width] = All_inds_tmp
+    
+    # scale predicted UV coordinates to [0, 255]
+    All_coords[:, :, 1:3] = All_coords[:, :, 1:3] * 255.
+    All_coords[All_coords > 255] = 255.
+    All_coords = All_coords.astype(np.uint8)
     All_inds = All_inds.astype(np.uint8)
-    #
-    IUV_SaveName = os.path.basename(im_name).split('.')[0]+'_IUV.png'
-    INDS_SaveName = os.path.basename(im_name).split('.')[0]+'_INDS.png'
-    cv2.imwrite(os.path.join(output_dir, '{}'.format(IUV_SaveName)), All_Coords )
-    cv2.imwrite(os.path.join(output_dir, '{}'.format(INDS_SaveName)), All_inds )
-    print('IUV written to: ' , os.path.join(output_dir, '{}'.format(IUV_SaveName)) )
-    ###
+    # save IUV images into files
+    IUV_SaveName = os.path.basename(im_name).split('.')[0] + '_IUV.png'
+    INDS_SaveName = os.path.basename(im_name).split('.')[0] + '_INDS.png'
+    cv2.imwrite(os.path.join(output_dir, '{}'.format(IUV_SaveName)), All_coords)
+    cv2.imwrite(os.path.join(output_dir, '{}'.format(INDS_SaveName)), All_inds)
+    print('IUV written to: ', os.path.join(output_dir, '{}'.format(IUV_SaveName)))
     ### DensePose Visualization Done!!
-    #
+    
     output_name = os.path.basename(im_name) + '.' + ext
     fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
     plt.close('all')
