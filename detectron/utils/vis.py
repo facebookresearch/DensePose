@@ -383,7 +383,9 @@ def vis_one_image(
     All_coords = np.zeros(im.shape, dtype=np.float32)  # shape: (im_height, im_width, 3)
     All_inds = np.zeros([im.shape[0], im.shape[1]], dtype=np.float32)  # shape: (im_height, im_width)
 
-    # display in smallest to largest order based on class scores of detected persons
+    # display in smallest to largest class scores order, however, this may cause sharpness in some body parts
+    # due to the output of an inaccurate bbox with lower score will not be overlapped by the output of a more
+    # precise bbox with higher score which will be discarded.
     inds = np.argsort(boxes[:, 4])
     for i, ind in enumerate(inds):
         score = boxes[ind, 4]
@@ -395,16 +397,18 @@ def vis_one_image(
             output = IUV_fields[ind]
             out_height, out_width = output.shape[1:3]
             
-            # get IUV of current bbox temporarily and then fill it to IUV output image
+            # first, locate the region of current bbox on final IUV output image
             All_coords_tmp = All_coords[y1:y1 + out_height, x1:x1 + out_width]
+            # then, extract IUV output of pixels within this bbox in which have not been filled with IUV of other bbox
             All_coords_tmp[All_coords_tmp == 0] = output.transpose([1, 2, 0])[All_coords_tmp == 0]
+            # update final IUV output image
             All_coords[y1:y1 + out_height, x1:x1 + out_width] = All_coords_tmp
             
-            # get human-body FG mask indices
-            index_UV = output[0]
+            # get (distinct) human-body FG mask indices for each bbox
+            index_UV = output[0]  # predicted part index: 0 ~ 24
             CurrentMask = (index_UV > 0).astype(np.float32)
             All_inds_tmp = All_inds[y1:y1 + out_height, x1:x1 + out_width]
-            All_inds_tmp[All_inds_tmp == 0] = CurrentMask[All_inds_tmp == 0] * i
+            All_inds_tmp[All_inds_tmp == 0] = CurrentMask[All_inds_tmp == 0] * (i + 1)  # avoid `i` starting with 0
             All_inds[y1:y1 + out_height, x1:x1 + out_width] = All_inds_tmp
     
     # scale predicted UV coordinates to [0, 255]
