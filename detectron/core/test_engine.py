@@ -374,7 +374,7 @@ def get_roidb_and_dataset(dataset_name, proposal_file, ind_range):
 
 
 def empty_results(num_classes, num_images):
-    """Return empty results lists for boxes, masks, and keypoints.
+    """Return empty results lists for boxes, masks, keypoints and body IUVs.
     Box detections are collected into:
       all_boxes[cls][image] = N x 5 array with columns (x1, y1, x2, y2, score)
     Instance mask predictions are collected into:
@@ -387,7 +387,10 @@ def empty_results(num_classes, num_images):
       Keypoints are recorded for person (cls = 1); they are in 1:1
       correspondence with the boxes in all_boxes[cls][image].
     Body uv predictions are collected into:
-      TODO
+      all_bodys[cls][image] = [...] list of body IUV results that are in 1:1 
+      correspondence with the boxes in all_boxes['person'][image], each encoded
+      as a 3D array (3, int(bbox_height), int(bbox_width)) with the 3 rows 
+      corresponding to [Index, U, V].
     """
     # Note: do not be tempted to use [[] * N], which gives N references to the
     # *same* empty list.
