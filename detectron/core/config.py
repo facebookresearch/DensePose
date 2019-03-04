@@ -863,7 +863,7 @@ __C.BODY_UV_RCNN.HEATMAP_SIZE = -1
 __C.BODY_UV_RCNN.UP_SCALE = -1
 
 # Apply a ConvTranspose layer to the features prior to predicting the heatmaps
-__C.KRCNN.USE_DECONV = False
+__C.BODY_UV_RCNN.USE_DECONV = False
 # Channel dimension of the hidden representation produced by the ConvTranspose
 __C.BODY_UV_RCNN.DECONV_DIM = 256
 # Use a ConvTranspose layer to predict the heatmaps
