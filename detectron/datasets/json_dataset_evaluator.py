@@ -213,9 +213,9 @@ def _log_detection_eval_metrics(json_dataset, coco_eval):
     precision = coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, :, 0, 2]
     ap_default = np.mean(precision[precision > -1])
     logger.info(
-        '~~~~ Mean and per-category AP @ IoU=[{:.2f},{:.2f}] ~~~~'.format(
+        '~~~~ Mean and per-category AP @ IoU=[{:.2f}, {:.2f}] ~~~~'.format(
             IoU_lo_thresh, IoU_hi_thresh))
-    logger.info('{:.1f}'.format(100 * ap_default))
+    logger.info('mAP: {:.1f}'.format(100 * ap_default))
     for cls_ind, cls in enumerate(json_dataset.classes):
         if cls == '__background__':
             continue
@@ -223,7 +223,7 @@ def _log_detection_eval_metrics(json_dataset, coco_eval):
         precision = coco_eval.eval['precision'][
             ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
         ap = np.mean(precision[precision > -1])
-        logger.info('{:.1f}'.format(100 * ap))
+        logger.info("class '{}' AP: {:.1f}".format(cls, 100 * ap))
     logger.info('~~~~ Summary metrics ~~~~')
     coco_eval.summarize()
 
@@ -439,20 +439,17 @@ def evaluate_body_uv(
     if use_salt:
         res_file += '_{}'.format(str(uuid.uuid4()))
     res_file += '.pkl'
-    results = _write_coco_body_uv_results_file(
+    _write_coco_body_uv_results_file(
         json_dataset, all_boxes, all_bodys, res_file
     )
     # Only do evaluation on non-test sets (annotations are undisclosed on test)
     if json_dataset.name.find('test') == -1:
-        # See comment in _write_coco_body_uv_results_file
-        #coco_eval = _do_body_uv_eval(json_dataset, res_file, output_dir)
-        coco_eval = _do_body_uv_eval(json_dataset, results, output_dir)
+        coco_eval = _do_body_uv_eval(json_dataset, res_file, output_dir)
     else:
         coco_eval = None
-    # See comment in _write_coco_body_uv_results_file
     # Optionally cleanup results json file
-    #if cleanup:
-    #    os.remove(res_file)
+    if cleanup:
+       os.remove(res_file)
     return coco_eval
 
 
@@ -460,7 +457,7 @@ def _write_coco_body_uv_results_file(
     json_dataset, all_boxes, all_bodys, res_file
 ):
     results = []
-    for cls_ind,cls in enumerate(json_dataset.classes):
+    for cls_ind, cls in enumerate(json_dataset.classes):
         if cls == '__background__':
             continue
         if cls_ind >= len(all_bodys):
@@ -473,20 +470,12 @@ def _write_coco_body_uv_results_file(
             json_dataset, all_boxes[cls_ind], all_bodys[cls_ind], cat_id))
     # Body UV results are stored in 3xHxW ndarray format,
     # which is not json serializable
-    #logger.info(
-    #    'Writing body uv results json to: {}'.format(
-    #        os.path.abspath(res_file)))
-    #with open(res_file, 'w') as fid:
-    #    json.dump(results, fid)
-    #
     logger.info(
         'Writing body uv results pkl to: {}'.format(
             os.path.abspath(res_file)))
-
     with open(res_file, 'wb') as f:
         pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
-    #logger.info('Not writing body uv resuts json')
-    return res_file
+    # logger.info('Not writing body uv resuts json')
 
 
 def _coco_body_uv_results_one_category(json_dataset, boxes, body_uvs, cat_id):
@@ -502,6 +491,9 @@ def _coco_body_uv_results_one_category(json_dataset, boxes, body_uvs, cat_id):
         uv_dets = body_uvs[i]
         box_dets = boxes[i].astype(np.float)
         scores = box_dets[:, -1]
+        # Convert the uv fields to uint8.
+        for uv in uv_dets:
+            uv[1:3, :, :] = uv[1:3, :, :] * 255
         # Don't use xyxy_to_xywh function for consistency with the original imp
         # Instead, cast to ints and don't add 1 when computing ws and hs
         # xywh_box_dets = box_utils.xyxy_to_xywh(box_dets[:, 0:4])
@@ -509,11 +501,6 @@ def _coco_body_uv_results_one_category(json_dataset, boxes, body_uvs, cat_id):
         # ys = xywh_box_dets[:, 1]
         # ws = xywh_box_dets[:, 2]
         # hs = xywh_box_dets[:, 3]
-        
-        # Convert the uv fields to uint8.
-        for uv in uv_dets:
-            uv[1:3,:,:] = uv[1:3,:,:]*255
-        ###
         xs = box_dets[:, 0]
         ys = box_dets[:, 1]
         ws = (box_dets[:, 2] - xs).astype(np.int)
@@ -533,17 +520,18 @@ def _do_body_uv_eval(json_dataset, res_file, output_dir):
     imgIds = json_dataset.COCO.getImgIds()
     imgIds.sort()
     with open(res_file, 'rb') as f:
-        res=pickle.load(f)
+        res = pickle.load(f)
     coco_dt = json_dataset.COCO.loadRes(res)
     # Non-standard params used by the modified COCO API version
     # from the DensePose fork
+    # global normalization factor used in per-instance evaluation
     test_sigma = 0.255
     coco_eval = denseposeCOCOeval(json_dataset.COCO, coco_dt, ann_type, test_sigma)
     coco_eval.params.imgIds = imgIds
     coco_eval.evaluate()
     coco_eval.accumulate()
-    #eval_file = os.path.join(output_dir, 'body_uv_results.pkl')
-    #save_object(coco_eval, eval_file)
-    #logger.info('Wrote json eval results to: {}'.format(eval_file))
+    # eval_file = os.path.join(output_dir, 'body_uv_results.pkl')
+    # save_object(coco_eval, eval_file)
+    # logger.info('Wrote json eval results to: {}'.format(eval_file))
     coco_eval.summarize()
     return coco_eval
