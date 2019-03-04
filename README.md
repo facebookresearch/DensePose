@@ -6,7 +6,7 @@ _Rıza Alp Güler, Natalia Neverova, Iasonas Kokkinos_
 [[`densepose.org`](https://densepose.org)] [[`arXiv`](https://arxiv.org/abs/1802.00434)] [[`BibTeX`](#CitingDensePose)]
 
 Dense human pose estimation aims at mapping all human pixels of an RGB image to the 3D surface of the human body. 
-DensePose-RCNN is implemented in the [Detectron](https://github.com/facebookresearch/Detectron) framework and is powered by [Caffe2](https://github.com/caffe2/caffe2).
+DensePose-RCNN is implemented in the [Detectron](https://github.com/facebookresearch/Detectron) framework and is powered by [Caffe2](https://github.com/pytorch/pytorch/tree/master/caffe2).
 
 <div align="center">
   <img src="https://drive.google.com/uc?export=view&id=1qfSOkpueo1kVZbXOuQJJhyagKjMgepsz" width="700px" />
