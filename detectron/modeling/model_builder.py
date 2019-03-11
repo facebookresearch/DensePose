@@ -329,7 +329,7 @@ def _add_roi_body_uv_head(
     model, add_roi_body_uv_head_func, blob_in, dim_in, spatial_scale_in
 ):
     """Add a body UV prediction head to the model."""
-    # Capture model graph before adding the mask head
+    # Capture model graph before adding the body UV head
     bbox_net = copy.deepcopy(model.net.Proto())
     # Add the body UV head
     blob_body_uv_head, dim_body_uv_head = add_roi_body_uv_head_func(
@@ -343,7 +343,7 @@ def _add_roi_body_uv_head(
     if not model.train:  # == inference
         # Inference uses a cascade of box predictions, then body uv predictions
         # This requires separate nets for box and body uv prediction.
-        # So we extract the keypoint prediction net, store it as its own
+        # So we extract the body uv prediction net, store it as its own
         # network, then restore model.net to be the bbox-only network
         model.body_uv_net, body_uv_blob_out = c2_utils.SuffixNet(
             'body_uv_net', model.net, len(bbox_net.op), blobs_body_uv

@@ -41,7 +41,6 @@ def get_fast_rcnn_blob_names(is_training=True):
         # labels_int32 blob: R categorical labels in [0, ..., K] for K
         # foreground classes plus background
         blob_names += ['labels_int32']
-    if is_training:
         # bbox_targets blob: R bounding-box regression targets with 4
         # targets per class
         blob_names += ['bbox_targets']
@@ -81,19 +80,32 @@ def get_fast_rcnn_blob_names(is_training=True):
         ########################
 
     if is_training and cfg.MODEL.BODY_UV_ON:
+        # 'body_uv_rois': RoIs sampled for training the body UV estimation branch.
+        # Shape is (#fg_rois, 5) in format (batch_idx, x1, y1, x2, y2).
         blob_names += ['body_uv_rois']
+        # 'roi_has_body_uv': binary labels for the RoIs specified in 'rois'
+        # indicating if each RoI has a body or not. Shape is (#rois).
         blob_names += ['roi_has_body_uv_int32']
-        #########
-        # ###################################################
-        blob_names += ['body_uv_ann_labels']
-        blob_names += ['body_uv_ann_weights']
-        # #################################################
-        blob_names += ['body_uv_X_points']
-        blob_names += ['body_uv_Y_points']
-        blob_names += ['body_uv_Ind_points']
+        # 'body_uv_parts': index of part in [0, ..., S] where S is the number of
+        # semantic parts used to sample body UV points for the RoIs specified in
+        # 'body_uv_rois'. Shape is (#rois, M, M) where M is the heat map size.
+        blob_names += ['body_uv_parts']
+        # 'body_uv_parts_weights': weight assigned to each target in 'body_uv_parts'.
+        # Shape is (#rois, M, M). Used in SpatialSoftmaxWithLoss.
+        blob_names += ['body_uv_parts_weights']
+        # 'body_uv_coords_xy': 2D spatial coordinates of collected points on
+        # the image. Shape is (#rois * 196, 2) in format (dp_x, dp_y).
+        # Used in PoolPointsInterp.
+        blob_names += ['body_uv_coords_xy']
+        # 'body_uv_I_points': surface patch indices in [0, ..., K] for K patches
+        # plus background. Shape is (#rois * 196, 1). Used in SoftmaxWithLoss.
         blob_names += ['body_uv_I_points']
+        # 'body_uv_U/V_points': UV coordinates of collected points in each patch.
+        # Shape is (#rois, 196, K). Used in PoolPointsInterp and SmoothL1Loss.
         blob_names += ['body_uv_U_points']
         blob_names += ['body_uv_V_points']
+        # 'body_uv_point_weights': weight assigned to each target in
+        # 'body_uv_U/V_points'. Shape is (#rois, 196, K). Used in SmoothL1Loss.
         blob_names += ['body_uv_point_weights']
 
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
@@ -173,7 +185,7 @@ def _sample_rois(roidb, im_scale, batch_idx):
     # against there being fewer than desired)
     bg_rois_per_this_image = rois_per_image - fg_rois_per_this_image
     bg_rois_per_this_image = np.minimum(bg_rois_per_this_image, bg_inds.size)
-    # Sample foreground regions without replacement
+    # Sample background regions without replacement
     if bg_inds.size > 0:
         bg_inds = npr.choice(
             bg_inds, size=bg_rois_per_this_image, replace=False

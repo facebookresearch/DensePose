@@ -876,6 +876,9 @@ __C.BODY_UV_RCNN.DECONV_KERNEL = 4
 # Number of patches in the dataset
 __C.BODY_UV_RCNN.NUM_PATCHES = -1
 
+# Number of semantic parts used to sample annotation points
+__C.BODY_UV_RCNN.NUM_SEMANTIC_PARTS = 14
+
 # Number of stacked Conv layers in body UV head
 __C.BODY_UV_RCNN.NUM_STACKED_CONVS = 8
 # Dimension of the hidden representation output by the body UV head

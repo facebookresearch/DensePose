@@ -154,7 +154,7 @@ class JsonDataset(object):
                 (0, 3, self.num_keypoints), dtype=np.int32
             )
         if cfg.MODEL.BODY_UV_ON:
-            entry['ignore_UV_body'] = np.empty((0),  dtype=np.bool)
+            entry['ignore_UV_body'] = np.empty((0), dtype=np.bool)
         #    entry['Box_image_links_body'] = []
         # Remove unwanted fields that come from the json file (if they exist)
         for k in ['date_captured', 'url', 'license', 'file_name']:
@@ -200,7 +200,7 @@ class JsonDataset(object):
                 valid_objs.append(obj)
                 valid_segms.append(obj['segmentation'])
                 ###
-                if 'dp_x' in obj.keys():
+                if 'dp_x' in obj:
                     valid_dp_x.append(obj['dp_x'])
                     valid_dp_y.append(obj['dp_y'])
                     valid_dp_I.append(obj['dp_I'])
@@ -216,7 +216,7 @@ class JsonDataset(object):
                     valid_dp_masks.append([])
                 ###
         num_valid_objs = len(valid_objs)
-        ##
+
         boxes = np.zeros((num_valid_objs, 4), dtype=entry['boxes'].dtype)
         gt_classes = np.zeros((num_valid_objs), dtype=entry['gt_classes'].dtype)
         gt_overlaps = np.zeros(
@@ -234,7 +234,7 @@ class JsonDataset(object):
                 dtype=entry['gt_keypoints'].dtype
             )
         if cfg.MODEL.BODY_UV_ON:
-            ignore_UV_body = np.zeros((num_valid_objs))
+            ignore_UV_body = np.zeros((num_valid_objs), dtype=entry['ignore_UV_body'].dtype)
             #Box_image_body  = [None]*num_valid_objs
 
         im_has_visible_keypoints = False
