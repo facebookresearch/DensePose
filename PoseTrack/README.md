@@ -11,7 +11,7 @@ Please first follow the [INSTALL.md](https://github.com/facebookresearch/DensePo
 
 To download the images of the original PoseTrack dataset, please refer to the posetrack webpage: https://posetrack.net. Note that we have used the keypoints provided in the PoseTrack dataset to form the DensePose-PoseTrack dataset. Our dense correspondence annotations are distributed under [NonCommercial Creative Commons](https://creativecommons.org/licenses/by-nc/2.0/) license.
 
-To downoad, run:
+To download, run:
 ```
 cd $DENSEPOSE/PoseTrack
 bash get_DensePose_PoseTrack.sh
