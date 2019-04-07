@@ -84,22 +84,22 @@ def add_body_uv_losses(model):
             ],
             ['interp_' + name]
         )
-    
+
     # Compute spatial softmax normalized probabilities, after which
     # cross-entropy loss is computed for semantic parts classification.
     probs_AnnIndex, loss_AnnIndex = model.net.SpatialSoftmaxWithLoss(
         [
-            'AnnIndex', 
+            'AnnIndex',
             'body_uv_parts', 'body_uv_parts_weights'
         ],
         ['probs_AnnIndex', 'loss_AnnIndex'],
-        scale=cfg.BODY_UV_RCNN.INDEX_WEIGHTS / cfg.NUM_GPUS
+        scale=model.GetLossScale() * cfg.BODY_UV_RCNN.INDEX_WEIGHTS
     )
     # Softmax loss for surface patch classification.
     probs_I_points, loss_I_points = model.net.SoftmaxWithLoss(
         ['interp_Index_UV', 'body_uv_I_points'],
         ['probs_I_points', 'loss_I_points'],
-        scale=cfg.BODY_UV_RCNN.PART_WEIGHTS / cfg.NUM_GPUS, 
+        scale=model.GetLossScale() * cfg.BODY_UV_RCNN.PART_WEIGHTS,
         spatial=0
     )
     ## Smooth L1 loss for each patch-specific UV coordinates regression.
@@ -132,7 +132,7 @@ def add_body_uv_losses(model):
                     'UV_point_weights', 'UV_point_weights'
                 ],
                 'loss_' + name + '_points',
-                scale=cfg.BODY_UV_RCNN.POINT_REGRESSION_WEIGHTS / cfg.NUM_GPUS
+                scale=model.GetLossScale() * cfg.BODY_UV_RCNN.POINT_REGRESSION_WEIGHTS
             )
         )
     # Add all losses to compute gradients
@@ -154,7 +154,7 @@ def add_body_uv_losses(model):
 def add_ResNet_roi_conv5_head_for_bodyUV(model, blob_in, dim_in, spatial_scale):
     """Add a ResNet "conv5" / "stage5" head for body UV prediction."""
     model.RoIFeatureTransform(
-        blob_in, 
+        blob_in,
         '_[body_uv]_pool5',
         blob_rois='body_uv_rois',
         method=cfg.BODY_UV_RCNN.ROI_XFORM_METHOD,
