@@ -388,7 +388,7 @@ def vis_one_image(
     ##
     for i, ind in enumerate(inds):
         entry = boxes[ind,:]
-        if entry[4] > 0.65:
+        if entry[4] >= thresh:
             entry=entry[0:4].astype(int)
             ####
             output = IUV_fields[ind]
