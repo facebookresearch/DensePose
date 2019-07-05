@@ -384,7 +384,7 @@ def vis_one_image(
     All_inds = np.zeros([im.shape[0],im.shape[1]])
     K = 26
     ##
-    inds = np.argsort(boxes[:,4])
+    inds = np.argsort(-boxes[:,4])
     ##
     for i, ind in enumerate(inds):
         entry = boxes[ind,:]
