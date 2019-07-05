@@ -399,7 +399,7 @@ def vis_one_image(
             ###
             CurrentMask = (output[0,:,:]>0).astype(np.float32)
             All_inds_old = All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]]
-            All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*i
+            All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*(i+1)
             All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]] = All_inds_old
     #
     All_Coords[:,:,1:3] = 255. * All_Coords[:,:,1:3]
