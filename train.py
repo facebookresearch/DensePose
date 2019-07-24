@@ -61,6 +61,17 @@ jsonrpc = JSONRPC(app, '/api', enable_web_browsable_api=False)
 
 
 ##############################
+###          model         ###
+##############################
+# logger = logging.getLogger(__name__)
+merge_cfg_from_file('./configs/DensePose_ResNet101_FPN_32x8d_s1x-e2e.yaml')
+cfg.NUM_GPUS = 1
+assert_and_infer_cfg(cache_urls=False)
+DOWNLOAD_CACHE = './detectron-download-cache/DensePose_ResNet101_FPN_32x8d_s1x-e2e.pkl'
+model = infer_engine.initialize_model_from_cfg(DOWNLOAD_CACHE)
+
+
+##############################
 ###      detect_image      ###
 ##############################
 def detect_image(im_path, thresh=0.9):
