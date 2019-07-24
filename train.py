@@ -114,7 +114,7 @@ def detect_image(im_path, thresh=0.9):
 # jsonrpc method
 @jsonrpc.method('main')
 def main(img_dir, output_dir, img_format='png', thresh=0.9):
-    # 获取图片地址
+    # get img paths
     img_paths = sorted(glob.glob(os.path.join(img_dir,'*'+img_format)))
     print('image nums:', len(img_paths))
     # detect
