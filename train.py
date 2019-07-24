@@ -41,7 +41,7 @@ setup_logging(__name__)
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu_id', type=str, default='0', help='gpu id: e.g. 0 1 2 3')
 parser.add_argument('--host', type=str, default='0.0.0.0')
-parser.add_argument('--post', type=int, default=5000)
+parser.add_argument('--port', type=int, default=5000)
 args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
