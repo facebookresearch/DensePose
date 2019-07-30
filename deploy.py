@@ -90,13 +90,13 @@ def detect_image(im_path, thresh=0.9):
         return im, np.zeros(im.shape), np.zeros([im.shape[0],im.shape[1]])
     # IUV
     IUV_fields = cls_bodys[1]
-    #
+    # init 
     All_Coords = np.zeros(im.shape)
     All_inds = np.zeros([im.shape[0],im.shape[1]])
     K = 26
-    ##
+    ## inds
     inds = np.argsort(-boxes[:,4])
-    ##
+    ## 
     for i, ind in enumerate(inds):
         entry = boxes[ind,:]
         if entry[4] > thresh:
@@ -112,7 +112,7 @@ def detect_image(im_path, thresh=0.9):
             All_inds_old = All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]]
             All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*(i+1)
             All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]] = All_inds_old
-    #
+    # Result processing
     All_Coords[:,:,1:3] = 255. * All_Coords[:,:,1:3]
     All_Coords[All_Coords>255] = 255.
     All_Coords = All_Coords.astype(np.uint8)
