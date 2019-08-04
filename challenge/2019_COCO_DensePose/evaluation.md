@@ -25,9 +25,9 @@ boxes and segments). Thesholding the IoU defines matches between the ground
 truth and predicted objects and allows computing precision-recall curves.
 In the case of keypoint detection *Object Keypoint Similarity* (OKS) is used.
 
-To adopt AP/AR for dense correspondence, we define an analogous similarity
-measure called *Geodesic Point Similarity* (GPS) which plays the same role
-as IoU for object detection and OKS for keypoint estimation. 
+To adopt AP/AR for dense correspondence, an analogous similarity
+measure called *Geodesic Point Similarity* (GPS) has been introduced,
+which plays the same role as IoU for object detection and OKS for keypoint estimation. 
 
 ## Geodesic Point Similarity
 
@@ -43,6 +43,22 @@ where <a href="https://www.codecogs.com/eqnedit.php?latex=&space;d(\hat{p}_i,p_i
 human body surface points and
 <a href="https://www.codecogs.com/eqnedit.php?latex=\kappa(p_i)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\kappa(p_i)" title="https://www.codecogs.com/eqnedit.php?latex=\kappa(p_i)" /></a>
 is a per-part normalization factor, defined as the mean geodesic distance between points on the part. Please note that due to the new per-part normalization the AP numbers do not match those reported in the paper, which are obtained via fixed K = 0.255.
+
+This formulation has a limitation that it is estimated on a set of predefined
+annotated points and therefore does not penalize spurious detections (false positives).
+As a result, the metric erroneously favors predictions with all pixels classified
+as foreground. To account for this, we introduce an additional multiplicative term
+corresponding to the intersection over union (IoU) between the ground truth and the
+predicted foreground masks to obtain an improved *masked-GPS*.
+
+
+## Masked Geodesic Point Similarity
+
+The masked geodesic point similarity (GPSm) is calculated as
+
+<a href="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m&space;=&space;\sqrt{\text{GPS}\mathcal{I}},&space;\text{where}&space;\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," target="_blank">
+<img src="https://latex.codecogs.com/gif.latex?\text{GPS}^m&space;=&space;\sqrt{\text{GPS}\mathcal{I}},&space;\text{where}&space;\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}},"
+title="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m = \sqrt{\text{GPS}\mathcal{I}}, \text{where} \mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," /></a>
 
 ## Metrics
 
