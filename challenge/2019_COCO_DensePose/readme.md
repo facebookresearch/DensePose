@@ -1,4 +1,4 @@
-# COCO 2018 DensePose Task
+# COCO 2019 DensePose Task
 
 ![DensePose Splash Image](http://cocodataset.org/images/densepose-splash.png)
 
@@ -11,9 +11,10 @@ human body to the 3D surface of the body. For full details of this task please
 see the [DensePose evaluation](evaluation.md) page.
 
 This task is part of the
-[Joint COCO and Mapillary Recognition Challenge Workshop](http://cocodataset.org/workshop/coco-mapillary-iccv-2019.html)
-at ECCV 2018. For further details about the joint workshop please
-visit the workshop page. Please also see the related COCO
+[COCO+Mapillary Joint Recognition Challenge Workshop](http://cocodataset.org/workshop/coco-mapillary-iccv-2019.html)
+at ICCV 2019. For further details about the joint workshop, as well as **new rules regarding technical reports and awards**, please
+visit the workshop page. 
+Please also see the related COCO
 [detection](http://cocodataset.org/workshop/coco-mapillary-iccv-2019.html#coco-detection),
 [panoptic](http://cocodataset.org/workshop/coco-mapillary-iccv-2019.html#coco-panoptic)
 and
@@ -45,13 +46,13 @@ October 27, 2019  | Winners present at ICCV 2019 Workshop
 
 ## Organizers
 
-Riza Alp Güler (INRIA, CentraleSupélec)
+Vasil Khalidov (Facebook AI Research)
 
 Natalia Neverova (Facebook AI Research)
 
-Vasil Khalidov (Facebook AI Research)
+Riza Alp Güler (Imperial College London / Ariel AI)
 
-Iasonas Kokkinos (Facebook AI Research)
+Iasonas Kokkinos (UCL / Ariel AI)
 
 ## Task Guidelines
 
@@ -86,5 +87,5 @@ explanations and instructions for each step of the process:
 [data format](data_format.md),
 [results format](results_format.md),
 [upload](upload.md) and [evaluation](evaluation.md) pages.
-For additional questions, please contact info@cocodataset.org.
+For additional questions, please contact vkhalidov@fb.com and nneverova@fb.com.
 
