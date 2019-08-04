@@ -31,7 +31,8 @@ which plays the same role as IoU for object detection and OKS for keypoint estim
 
 ## Geodesic Point Similarity
 
-The geodesic point similarity (GPS) is based on geodesic distances on the template mesh between the collected groundtruth points and estimated surface coordinates for the same image points as follows:
+The geodesic point similarity (GPS) is based on geodesic distances on the template mesh
+between the collected ground truth points and estimated surface coordinates for the same image points as follows:
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}&space;=&space;\frac{1}{|P|}\sum_{p_i&space;\in&space;P}\exp\left&space;(\frac{-{d(\hat{p}_i,p_i)}^2}{2\kappa(p_i)^2}\right)," target="_blank">
 <img src="https://latex.codecogs.com/gif.latex?\text{GPS}&space;=&space;\frac{1}{|P|}\sum_{p_i&space;\in&space;P}\exp\left&space;(\frac{-{d(\hat{p}_i,p_i)}^2}{2\kappa(p_i)^2}\right),"
@@ -60,6 +61,22 @@ The masked geodesic point similarity (GPSm) is calculated as
 <img src="https://latex.codecogs.com/gif.latex?\text{GPS}^m=\sqrt{\text{GPS}\cdot\mathcal{I}},\quad\text{with}\quad\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cup\hat{\mathcal{M}}},"
 title="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m=\sqrt{\text{GPS}\cdot\mathcal{I}},\quad\text{with}\quad\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cup\hat{\mathcal{M}}}," /></a>
 
+where GPS is the geodesic point similarity metric value and
+<a href="https://www.codecogs.com/eqnedit.php?latex=\mathcal{I}" target="_blank">
+<img src="https://latex.codecogs.com/gif.latex?\mathcal{I}"
+title="https://www.codecogs.com/eqnedit.php?latex=\mathcal{I}" /></a>
+is the intersection over union between the ground truth (
+<a href="https://www.codecogs.com/eqnedit.php?latex=\mathcal{M}" target="_blank">
+<img src="https://latex.codecogs.com/gif.latex?\mathcal{M}"
+title="https://www.codecogs.com/eqnedit.php?latex=\mathcal{M}" /></a>
+)
+and the predicted (
+<a href="https://www.codecogs.com/eqnedit.php?latex=\hat{\mathcal{M}}" target="_blank">
+<img src="https://latex.codecogs.com/gif.latex?\hat{\mathcal{M}}"
+title="https://www.codecogs.com/eqnedit.php?latex=\hat{\mathcal{M}}" /></a>
+)
+foreground masks.
+
 ## Metrics
 
 The following metrics are used to characterize the performance of a dense pose
@@ -67,9 +84,9 @@ estimation algorithm on COCO:
 
 *Average Precision*
 ```
-AP       % AP averaged over GPS values 0.5 : 0.05 : 0.95 (primary challenge metric)
-AP-50    % AP at GPS=0.5  (loose metric)
-AP-75    % AP at GPS=0.75 (strict metric)
+AP       % AP averaged over GPSm values 0.5 : 0.05 : 0.95 (primary challenge metric)
+AP-50    % AP at GPSm=0.5  (loose metric)
+AP-75    % AP at GPSm=0.75 (strict metric)
 AP-m     % AP for medium detections: 32² < area < 96²
 AP-l     % AP for large detections:  area > 96²
 ```
