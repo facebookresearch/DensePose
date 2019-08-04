@@ -56,9 +56,9 @@ predicted foreground masks to obtain an improved *masked-GPS*.
 
 The masked geodesic point similarity (GPSm) is calculated as
 
-<a href="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m&space;=&space;\sqrt{\text{GPS}\mathcal{I}},&space;\text{where}&space;\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," target="_blank">
-<img src="https://latex.codecogs.com/gif.latex?\text{GPS}^m&space;=&space;\sqrt{\text{GPS}\mathcal{I}},&space;\text{where}&space;\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}},"
-title="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m = \sqrt{\text{GPS}\mathcal{I}}, \text{where} \mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," /></a>
+<a href="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m=\sqrt{\text{GPS}\cdot\mathcal{I}},\quad\text{with}\quad\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," target="_blank">
+<img src="https://latex.codecogs.com/gif.latex?\text{GPS}^m=\sqrt{\text{GPS}\cdot\mathcal{I}},\quad\text{with}\quad\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}},"
+title="https://www.codecogs.com/eqnedit.php?latex=\text{GPS}^m=\sqrt{\text{GPS}\cdot\mathcal{I}},\quad\text{with}\quad\mathcal{I}=\frac{\mathcal{M}\cap\hat{\mathcal{M}}}{\mathcal{M}\cap\hat{\mathcal{M}}}," /></a>
 
 ## Metrics
 
