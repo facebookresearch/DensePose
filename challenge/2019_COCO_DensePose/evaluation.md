@@ -95,7 +95,7 @@ AP-l     % AP for large detections:  area > 96²
 
 Evaluation code is available on the
 [DensePose](https://github.com/facebookresearch/DensePose/) github,
-see [densepose_cocoeval.py](https://github.com/facebookresearch/DensePose/blob/master/detectron/datasets/densepose_cocoeval.py).
+see [densepose_cocoeval.py](https://github.com/facebookresearch/DensePose/blob/master/challenge/2019_COCO_DensePose/densepose_cocoeval.py).
 Before running the evaluation code, please prepare your results in the format
 described on the [results](results_format.md) format page.
 The geodesic distances are pre-computed on a subsampled version of the SMPL
