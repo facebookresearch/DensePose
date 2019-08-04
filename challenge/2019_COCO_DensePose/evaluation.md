@@ -7,6 +7,8 @@ described below. To obtain results on the COCO DensePose test set, for which
 ground-truth annotations are hidden, generated results must be uploaded to
 the evaluation server. The exact same evaluation code, described below, is
 used to evaluate results on the test set.
+**Please note the changes in the evaluation metric of the 2019 challenge compared to 2018 
+(see description below).**
 
 ## Evaluation Overview
 
