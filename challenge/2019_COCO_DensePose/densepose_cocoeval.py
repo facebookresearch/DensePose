@@ -730,7 +730,7 @@ class denseposeCOCOeval:
                         if new_iou == 0.:
                             continue
                         # if match successful and best so far, store appropriately
-                        iou = ious[dind, gind]
+                        iou = new_iou
                         m = gind
                     # if match made store id of match for both dt and gt
                     if m == -1:
