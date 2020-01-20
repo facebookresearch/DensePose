@@ -37,8 +37,18 @@ Install the [COCO API](https://github.com/cocodataset/cocoapi):
 # COCOAPI=/path/to/clone/cocoapi
 git clone https://github.com/cocodataset/cocoapi.git $COCOAPI
 cd $COCOAPI/PythonAPI
+
+#pre install some requirements before install not to make error like 'pycocotools/_mask.c: No such file or directory '
+# pycocotools needs matplotlib, Cython in advance, so this installation process has to be in right order.
+pip install Cython
+python -m pip install matplotlib
+pip install pycocotools 
+
+
 # Install into global site-packages
-make install
+make install 
+
+
 # Alternatively, if you do not have permissions or prefer
 # not to install the COCO API into global site-packages
 python2 setup.py install --user
