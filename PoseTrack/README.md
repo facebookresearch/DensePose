@@ -38,6 +38,23 @@ ln -s $DENSEPOSE/PoseTrack/DensePose_PoseTrack/densepose_only_posetrack_train201
 ln -s $DENSEPOSE/PoseTrack/DensePose_PoseTrack/densepose_only_posetrack_val2017.json $DENSEPOSE/detectron/datasets/data/posetrack/
 ln -s $DENSEPOSE/PoseTrack/DensePose_PoseTrack/densepose_posetrack_test2017.json $DENSEPOSE/detectron/datasets/data/posetrack/
 ```
+# For use with a Docker image 
+```
+sudo nvidia-docker run -v $DENSEPOSE/DensePoseData:/denseposedata -v /path/to/folder/coco:/coco -v $DENSEPOSE/PoseTrack/DensePose_PoseTrack:/posetrackdata -it
+```
+Symlinks for docker file
+
+Create a symlink for the PoseTrack dataset in your `datasets/data` folder.
+```
+ln -s /posetrackdata /densepose/detectron/datasets/data/posetrack
+```
+Create symlinks for the DensePose-PoseTrack annotations
+
+```
+ln -s /posetrackdata/DensePose_PoseTrack/densepose_only_posetrack_train2017.json /densepose/detectron/datasets/data/posetrack/
+ln -s /posetrackdata/PoseTrack/DensePose_PoseTrack/densepose_only_posetrack_val2017.json /densepose/detectron/datasets/data/posetrack/
+ln -s /posetrackdata/PoseTrack/DensePose_PoseTrack/densepose_posetrack_test2017.json /densepose/detectron/datasets/data/posetrack/
+
 Your local PoseTrack dataset copy at `/path/to/posetrack` should have the following directory structure:
 
 ```
