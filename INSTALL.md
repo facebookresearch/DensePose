@@ -67,7 +67,7 @@ Set up Python modules:
 cd $DENSEPOSE && make
 ```
 
-Check that Detectron tests pass (e.g. for [`SpatialNarrowAsOp test`](tests/test_spatial_narrow_as_op.py)):
+Check that Detectron tests pass (e.g. for [`SpatialNarrowAsOp test`](detectron/tests/test_spatial_narrow_as_op.py)):
 
 ```
 python2 $DENSEPOSE/detectron/tests/test_spatial_narrow_as_op.py
@@ -139,7 +139,7 @@ cd $DENSEPOSE/docker
 docker build -t densepose:c2-cuda9-cudnn7 .
 ```
 
-Run the image (e.g. for [`BatchPermutationOp test`](tests/test_batch_permutation_op.py)):
+Run the image (e.g. for [`BatchPermutationOp test`](detectron/tests/test_batch_permutation_op.py)):
 
 ```
 nvidia-docker run --rm -it densepose:c2-cuda9-cudnn7 python2 detectron/tests/test_batch_permutation_op.py
