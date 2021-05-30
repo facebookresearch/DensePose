@@ -117,11 +117,11 @@ Your local COCO dataset copy at `/path/to/coco` should have the following direct
 
 ```
 coco
-|_ coco_train2014
+|_ train2014
 |  |_ <im-1-name>.jpg
 |  |_ ...
 |  |_ <im-N-name>.jpg
-|_ coco_val2014
+|_ val2014
 |_ ...
 |_ annotations
    |_ instances_train2014.json
