@@ -384,11 +384,11 @@ def vis_one_image(
     All_inds = np.zeros([im.shape[0],im.shape[1]])
     K = 26
     ##
-    inds = np.argsort(boxes[:,4])
+    inds = np.argsort(-boxes[:,4])
     ##
     for i, ind in enumerate(inds):
         entry = boxes[ind,:]
-        if entry[4] > 0.65:
+        if entry[4] >= thresh:
             entry=entry[0:4].astype(int)
             ####
             output = IUV_fields[ind]
@@ -399,7 +399,7 @@ def vis_one_image(
             ###
             CurrentMask = (output[0,:,:]>0).astype(np.float32)
             All_inds_old = All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]]
-            All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*i
+            All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*(i+1)
             All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]] = All_inds_old
     #
     All_Coords[:,:,1:3] = 255. * All_Coords[:,:,1:3]
