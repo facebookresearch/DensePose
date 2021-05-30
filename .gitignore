@@ -21,6 +21,7 @@ build/
 !DensePoseData/demo_data/demo_dp_single_ann.pkl
 *.tar.gz
 *.json
+!challenge/2018_COCO_DensePose/example_results.json
 
 *.DS_Store
 # Dataset symlinks
@@ -32,3 +33,6 @@ detectron/utils/cython_*.c
 
 notebooks_old/*
 configs_old/*
+
+
+.nfs*

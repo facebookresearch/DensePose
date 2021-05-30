@@ -132,8 +132,8 @@ def evaluate_keypoints(dataset, all_boxes, all_keyps, output_dir):
     """Evaluate human keypoint detection (i.e., 2D pose estimation)."""
     logger.info('Evaluating detections')
     not_comp = not cfg.TEST.COMPETITION_MODE
-    assert dataset.name.startswith('keypoints_coco_'), \
-        'Only COCO keypoints are currently supported'
+    #assert dataset.name.startswith('keypoints_coco_'), \
+    #    'Only COCO keypoints are currently supported'
     coco_eval = json_dataset_evaluator.evaluate_keypoints(
         dataset,
         all_boxes,

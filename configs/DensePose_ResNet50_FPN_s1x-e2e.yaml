@@ -59,7 +59,7 @@ BODY_UV_RCNN:
   ##
   BODY_UV_IMS: True 
 TRAIN:
-  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/ImageNetPretrained/MSRA/R-50.pkl
+  WEIGHTS: https://dl.fbaipublicfiles.com/detectron/ImageNetPretrained/MSRA/R-50.pkl
   DATASETS: ('dense_coco_2014_train', 'dense_coco_2014_valminusminival')
   SCALES: (640, 672, 704, 736, 768, 800)
   MAX_SIZE: 1333
