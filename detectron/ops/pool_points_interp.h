@@ -21,7 +21,7 @@ class PoolPointsInterpOp final : public Operator<Context> {
  public:
   PoolPointsInterpOp(const OperatorDef& operator_def, Workspace* ws)
       : Operator<Context>(operator_def, ws),
-        spatial_scale_(OperatorBase::GetSingleArgument<float>(
+        spatial_scale_(this->template GetSingleArgument<float>(
               "spatial_scale", 1.)) {
     DCHECK_GT(spatial_scale_, 0);
   }
@@ -40,7 +40,7 @@ class PoolPointsInterpGradientOp final : public Operator<Context> {
  public:
   PoolPointsInterpGradientOp(const OperatorDef& def, Workspace* ws)
       : Operator<Context>(def, ws),
-        spatial_scale_(OperatorBase::GetSingleArgument<float>(
+        spatial_scale_(this->template GetSingleArgument<float>(
               "spatial_scale", 1.)){
     DCHECK_GT(spatial_scale_, 0);
   }
