@@ -384,6 +384,41 @@ __C.TEST.KPS_AUG.ASPECT_RATIOS = ()
 __C.TEST.KPS_AUG.ASPECT_RATIO_H_FLIP = False
 
 # ---------------------------------------------------------------------------- #
+# Test-time augmentations for body uv detection
+# ---------------------------------------------------------------------------- #
+__C.TEST.BODY_UV_AUG = AttrDict()
+
+# Enable test-time augmentation for instance body uv detection if True
+__C.TEST.BODY_UV_AUG.ENABLED = False
+
+# Heuristic used to combine body uv predictions
+# SOFT prefix indicates that the computation is performed on soft BODY_UVs
+#   Valid options: ('SOFT_AVG', 'SOFT_MAX')
+__C.TEST.BODY_UV_AUG.HEUR = b'SOFT_AVG'
+
+# Horizontal flip at the original scale (id transform)
+__C.TEST.BODY_UV_AUG.H_FLIP = False
+
+# Each scale is the pixel size of an image's shortest side
+__C.TEST.BODY_UV_AUG.SCALES = ()
+
+# Max pixel size of the longer side
+__C.TEST.BODY_UV_AUG.MAX_SIZE = 4000
+
+# Horizontal flip at each scale
+__C.TEST.BODY_UV_AUG.SCALE_H_FLIP = False
+
+# Apply scaling based on object size
+__C.TEST.BODY_UV_AUG.SCALE_SIZE_DEP = False
+__C.TEST.BODY_UV_AUG.AREA_TH = 180**2
+
+# Each aspect ratio is relative to image width
+__C.TEST.BODY_UV_AUG.ASPECT_RATIOS = ()
+
+# Horizontal flip at each aspect ratio
+__C.TEST.BODY_UV_AUG.ASPECT_RATIO_H_FLIP = False
+
+# ---------------------------------------------------------------------------- #
 # Soft NMS
 # ---------------------------------------------------------------------------- #
 __C.TEST.SOFT_NMS = AttrDict()

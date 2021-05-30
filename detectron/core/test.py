@@ -22,8 +22,10 @@ from __future__ import unicode_literals
 
 from collections import defaultdict
 import cv2
+import os
 import logging
 import numpy as np
+from scipy.io  import loadmat
 
 from caffe2.python import core
 from caffe2.python import workspace
@@ -99,9 +101,15 @@ def im_detect_all(model, im, box_proposals, timers=None):
 
     if cfg.MODEL.BODY_UV_ON and boxes.shape[0] > 0:
         timers['im_detect_body_uv'].tic()
-        cls_bodys = im_detect_body_uv(model, im_scale, boxes)
+        if cfg.TEST.BODY_UV_AUG.ENABLED:
+            bodys = im_detect_body_uv_aug(model, im, boxes)
+        else:
+            bodys = im_detect_body_uv(model, im_scale, boxes)
         timers['im_detect_body_uv'].toc()
-        
+
+        timers['misc_body_uv'].tic()
+        cls_bodys = body_uv_results(bodys, boxes)
+        timers['misc_body_uv'].toc()
     else:
         cls_bodys = None
 
@@ -718,6 +726,198 @@ def im_detect_keypoints_aspect_ratio(
     return heatmaps_ar
 
 
+def im_detect_body_uv(model, im_scale, boxes):
+    """Compute body uv predictions."""
+    M = cfg.BODY_UV_RCNN.HEATMAP_SIZE
+    P = cfg.BODY_UV_RCNN.NUM_PATCHES
+    if boxes.shape[0] == 0:
+        pred_body_uvs = np.zeros((0, P, M, M), np.float32)
+        return pred_body_uvs
+
+    inputs = {'body_uv_rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'body_uv_rois')
+
+    for k, v in inputs.items():
+        workspace.FeedBlob(core.ScopedName(k), v)
+    workspace.RunNet(model.body_uv_net.Proto().name)
+
+    AnnIndex = workspace.FetchBlob(core.ScopedName('AnnIndex')).squeeze()
+    Index_UV = workspace.FetchBlob(core.ScopedName('Index_UV')).squeeze()
+    U_uv = workspace.FetchBlob(core.ScopedName('U_estimated')).squeeze()
+    V_uv = workspace.FetchBlob(core.ScopedName('V_estimated')).squeeze()
+
+    # In case of 1
+    if AnnIndex.ndim == 3:
+        AnnIndex = np.expand_dims(AnnIndex, axis=0)
+    if Index_UV.ndim == 3:
+        Index_UV = np.expand_dims(Index_UV, axis=0)
+    if U_uv.ndim == 3:
+        U_uv = np.expand_dims(U_uv, axis=0)
+    if V_uv.ndim == 3:
+        V_uv = np.expand_dims(V_uv, axis=0)
+
+    bodys = [AnnIndex, Index_UV, U_uv, V_uv]
+
+    return bodys
+
+
+def bodys_append(bodys_ts, bodys_i):
+    for i in xrange(len(bodys_ts)):
+        bodys_ts[i].append(bodys_i[i])
+
+    return bodys_ts
+
+
+def im_detect_body_uv_aug(model, im, boxes):
+    """Performs body uv detection with test-time augmentations.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im (ndarray): BGR image to test
+        boxes (ndarray): R x 4 array of bounding boxes
+
+    Returns:
+        bodys (list): 
+    """
+    assert not cfg.TEST.BODY_UV_AUG.SCALE_SIZE_DEP, \
+        'Size dependent scaling not implemented'
+
+    # Collect body uvs computed under different transformations
+    bodys_ts = [[] for i in xrange(4)]
+
+    # Compute body uvs for the original image (identity transform)
+    im_scale_i = im_conv_body_only(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE)
+    bodys_i = im_detect_body_uv(model, im_scale_i, boxes)
+    bodys_ts = bodys_append(bodys_ts, bodys_i)
+
+    # Perform body uv detection on the horizontally flipped image
+    if cfg.TEST.BODY_UV_AUG.H_FLIP:
+        bodys_hf = im_detect_body_uv_hflip(
+            model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes
+        )
+        bodys_ts = bodys_append(bodys_ts, bodys_hf)
+
+    # Compute detections at different scales
+    for scale in cfg.TEST.BODY_UV_AUG.SCALES:
+        max_size = cfg.TEST.BODY_UV_AUG.MAX_SIZE
+        bodys_scl = im_detect_body_uv_scale(model, im, scale, max_size, boxes)
+        bodys_ts = bodys_append(bodys_ts, bodys_scl)
+
+        if cfg.TEST.BODY_UV_AUG.SCALE_H_FLIP:
+            bodys_scl_hf = im_detect_body_uv_scale(
+                model, im, scale, max_size, boxes, hflip=True
+            )
+            bodys_ts = bodys_append(bodys_ts, bodys_scl_hf)
+
+    # Compute bodys at different aspect ratios
+    for aspect_ratio in cfg.TEST.BODY_UV_AUG.ASPECT_RATIOS:
+        bodys_ar = im_detect_body_uv_aspect_ratio(model, im, aspect_ratio, boxes)
+        bodys_ts = bodys_append(bodys_ts, bodys_ar)
+
+        if cfg.TEST.BODY_UV_AUG.ASPECT_RATIO_H_FLIP:
+            bodys_ar_hf = im_detect_body_uv_aspect_ratio(
+                model, im, aspect_ratio, boxes, hflip=True
+            )
+            bodys_ts = bodys_append(bodys_ts, bodys_ar_hf)
+
+    # Combine the predicted soft bodys
+    bodys_c = []
+    if cfg.TEST.BODY_UV_AUG.HEUR == 'SOFT_AVG':
+        for i in xrange(len(bodys_ts)):
+            bodys_c.append(np.mean(bodys_ts[i], axis=0))
+    elif cfg.TEST.BODY_UV_AUG.HEUR == 'SOFT_MAX':
+        for i in xrange(len(bodys_ts)):
+            bodys_c.append(np.amax(bodys_ts[i], axis=0))
+    else:
+        raise NotImplementedError(
+            'Heuristic {} not supported'.format(cfg.TEST.BODY_UV_AUG.HEUR)
+        )
+
+    return bodys_c
+
+
+def im_detect_body_uv_hflip(model, im, target_scale, target_max_size, boxes):
+    """Performs body uv detection on the horizontally flipped image.
+    Function signature is the same as for im_detect_body_uv_aug.
+    """
+    # Compute the body uv for the flipped image
+    im_hf = im[:, ::-1, :]
+    boxes_hf = box_utils.flip_boxes(boxes, im.shape[1])
+
+    im_scale = im_conv_body_only(model, im_hf, target_scale, target_max_size)
+    bodys_hf = im_detect_body_uv(model, im_scale, boxes_hf)
+
+    # Invert the predicted soft uv
+    bodys_inv = []
+    _index = [0,1,2,4,3,6,5,8,7,10,9,12,11,14,13,16,15,18,17,20,19,22,21,24,23]
+    label_index = [0,1,3,2,5,4,7,6,9,8,11,10,13,12,14,15,16,17,18,19,20,21,22,23,24]
+    UV_symmetry_filename = os.path.join(
+        os.path.dirname(__file__), 
+        '../../DensePoseData/UV_data/UV_symmetry_transforms.mat'
+    )
+    UV_sym = loadmat(UV_symmetry_filename)
+    
+    for i in xrange(len(bodys_hf)):
+        bodys_hf[i] = bodys_hf[i][:, :, :, ::-1]
+    
+    bodys_inv.append(bodys_hf[0][:, label_index, :, :])
+    bodys_inv.append(bodys_hf[1][:, _index, :, :])
+
+    U_uv, V_uv = bodys_hf[2:]
+    U_sym = np.zeros(U_uv.shape)
+    V_sym = np.zeros(V_uv.shape)
+    U_uv = np.where(U_uv > 1, 1, U_uv)
+    V_uv = np.where(V_uv > 1, 1, V_uv)
+    U_loc = (U_uv * 255).astype(np.int64)
+    V_loc = (V_uv * 255).astype(np.int64)
+    for i in xrange(1, 25):
+        for j in xrange(len(V_sym)):
+            V_sym[j, i] = UV_sym['V_transforms'][0, i - 1][V_loc[j, i],U_loc[j, i]]
+            U_sym[j, i] = UV_sym['U_transforms'][0, i - 1][V_loc[j, i],U_loc[j, i]]
+
+    bodys_inv.append(U_sym[:, _index, :, :])
+    bodys_inv.append(V_sym[:, _index, :, :])
+
+    return bodys_inv
+
+
+def im_detect_body_uv_scale(
+    model, im, target_scale, target_max_size, boxes, hflip=False
+):
+    """Computes body uv at the given scale."""
+    if hflip:
+        bodys_scl = im_detect_body_uv_hflip(
+            model, im, target_scale, target_max_size, boxes
+        )
+    else:
+        im_scale = im_conv_body_only(model, im, target_scale, target_max_size)
+        bodys_scl = im_detect_body_uv(model, im_scale, boxes)
+    return bodys_scl
+
+
+def im_detect_body_uv_aspect_ratio(model, im, aspect_ratio, boxes, hflip=False):
+    """Computes body uv detections at the given width-relative aspect ratio."""
+
+    # Perform body uv detection on the transformed image
+    im_ar = image_utils.aspect_ratio_rel(im, aspect_ratio)
+    boxes_ar = box_utils.aspect_ratio(boxes, aspect_ratio)
+
+    if hflip:
+        bodys_ar = im_detect_body_uv_hflip(
+            model, im_ar, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes_ar
+        )
+    else:
+        im_scale = im_conv_body_only(
+            model, im_ar, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE
+        )
+        bodys_ar = im_detect_body_uv(model, im_scale, boxes_ar)
+
+    return bodys_ar
+
+
 def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
     """Combines heatmaps while taking object sizes into account."""
     assert len(hms_ts) == len(ds_ts) and len(ds_ts) == len(us_ts), \
@@ -886,39 +1086,8 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
     return cls_keyps
 
 
-def im_detect_body_uv(model, im_scale, boxes):
-    """Compute body uv predictions."""
-    M = cfg.BODY_UV_RCNN.HEATMAP_SIZE
-    P = cfg.BODY_UV_RCNN.NUM_PATCHES
-    if boxes.shape[0] == 0:
-        pred_body_uvs = np.zeros((0, P, M, M), np.float32)
-        return pred_body_uvs
-
-    inputs = {'body_uv_rois': _get_rois_blob(boxes, im_scale)}
-
-    # Add multi-level rois for FPN
-    if cfg.FPN.MULTILEVEL_ROIS:
-        _add_multilevel_rois_for_test(inputs, 'body_uv_rois')
-
-    for k, v in inputs.items():
-        workspace.FeedBlob(core.ScopedName(k), v)
-    workspace.RunNet(model.body_uv_net.Proto().name)
-
-    AnnIndex = workspace.FetchBlob(core.ScopedName('AnnIndex')).squeeze()
-    Index_UV = workspace.FetchBlob(core.ScopedName('Index_UV')).squeeze()
-    U_uv = workspace.FetchBlob(core.ScopedName('U_estimated')).squeeze()
-    V_uv = workspace.FetchBlob(core.ScopedName('V_estimated')).squeeze()
-
-    # In case of 1
-    if AnnIndex.ndim == 3:
-        AnnIndex = np.expand_dims(AnnIndex, axis=0)
-    if Index_UV.ndim == 3:
-        Index_UV = np.expand_dims(Index_UV, axis=0)
-    if U_uv.ndim == 3:
-        U_uv = np.expand_dims(U_uv, axis=0)
-    if V_uv.ndim == 3:
-        V_uv = np.expand_dims(V_uv, axis=0)
-
+def body_uv_results(bodys, boxes):
+    AnnIndex, Index_UV, U_uv, V_uv = bodys
     K = cfg.BODY_UV_RCNN.NUM_PATCHES + 1
     outputs = []
 
