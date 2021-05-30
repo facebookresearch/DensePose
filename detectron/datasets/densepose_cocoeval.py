@@ -97,49 +97,52 @@ class denseposeCOCOeval:
             self.sigma = sigma
         self.ignoreThrBB = 0.7
         self.ignoreThrUV = 0.9
+        self.num_parts = 24  # number of pre-defined body parts
 
     def _loadGEval(self):
-        print('Loading densereg GT..')
         prefix = os.path.dirname(__file__) + '/../../DensePoseData/eval_data/'
-        print(prefix)
+        print('Loading densereg GT from {}'.format(prefix))
         SMPL_subdiv = loadmat(prefix + 'SMPL_subdiv.mat')
         self.PDIST_transform = loadmat(prefix + 'SMPL_SUBDIV_TRANSFORM.mat')
+        # 1-based index of geodesic distance matrix, 
+        # range: [1, 27554], shape: (num_total_points=29408,)
         self.PDIST_transform = self.PDIST_transform['index'].squeeze()
-        UV = np.array([
-            SMPL_subdiv['U_subdiv'],
-            SMPL_subdiv['V_subdiv']
-        ]).squeeze()
-        ClosestVertInds = np.arange(UV.shape[1])+1
+        # UV coordinates of all collected points on SMPL model, shape: (2, num_total_points)
+        UV = np.array([SMPL_subdiv['U_subdiv'], SMPL_subdiv['V_subdiv']]).squeeze()
+        # body part index (1 ~ 24), shape: (num_total_point,)
+        Part_ids = SMPL_subdiv['Part_ID_subdiv'].squeeze()
+        self.Part_ids = np.array(Part_ids)
+        # 1-based index of closest vertex index of each point,
+        # range: [1, num_total_points], shape: (num_total_points,)
+        ClosestVertInds = np.arange(UV.shape[1]) + 1
         self.Part_UVs = []
         self.Part_ClosestVertInds = []
-        for i in np.arange(24):
-            self.Part_UVs.append(
-                UV[:, SMPL_subdiv['Part_ID_subdiv'].squeeze()==(i+1)]
-            )
-            self.Part_ClosestVertInds.append(
-                ClosestVertInds[SMPL_subdiv['Part_ID_subdiv'].squeeze()==(i+1)]
-            )
+        # UV coordinates and closest vertex indices of points in each part
+        for i in np.arange(1, self.num_parts + 1):
+            self.Part_UVs.append(UV[:, Part_ids == i])
+            self.Part_ClosestVertInds.append(ClosestVertInds[Part_ids == i])
 
         arrays = {}
-        f = h5py.File( prefix + 'Pdist_matrix.mat')
+        f = h5py.File(prefix + 'Pdist_matrix.mat')
         for k, v in f.items():
             arrays[k] = np.array(v)
+        f.close()
+        # precomputed geodesic distances matrix with compact representation
         self.Pdist_matrix = arrays['Pdist_matrix']
-        self.Part_ids = np.array(  SMPL_subdiv['Part_ID_subdiv'].squeeze())
         # Mean geodesic distances for parts.
-        self.Mean_Distances = np.array( [0, 0.351, 0.107, 0.126,0.237,0.173,0.142,0.128,0.150] )
+        self.Mean_Distances = np.array([0, 0.351, 0.107, 0.126, 0.237, 0.173, 0.142, 0.128, 0.150])
         # Coarse Part labels.
-        self.CoarseParts = np.array( [ 0,  1,  1,  2,  2,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  
-             6,  6,  6,  6,  7,  7,  7,  7,  8,  8] )
-        
-        print('Loaded')
+        self.CoarseParts = np.array(
+            [0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8]
+        )
+
+        print('densereg GT loaded')
 
     def _prepare(self):
         '''
         Prepare ._gts and ._dts for evaluation based on params
         :return: None
         '''
-
         def _toMask(anns, coco):
             # modify ann['segmentation'] by reference
             for ann in anns:
@@ -168,11 +171,11 @@ class denseposeCOCOeval:
                 return True
 
             bb = np.array(dt['bbox']).astype(np.int)
-            x1,y1,x2,y2 = bb[0],bb[1],bb[0]+bb[2],bb[1]+bb[3]
-            x2 = min([x2,iregion.shape[1]])
-            y2 = min([y2,iregion.shape[0]])
+            x1, y1, x2, y2 = bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3]
+            x2 = min([x2, iregion.shape[1]])
+            y2 = min([y2, iregion.shape[0]])
 
-            if bb[2]* bb[3] == 0:
+            if bb[2] * bb[3] == 0:
                 return False
 
             crop_iregion = iregion[y1:y2, x1:x2]
@@ -181,11 +184,11 @@ class denseposeCOCOeval:
                 return True
 
             if not 'uv' in dt.keys(): # filtering boxes
-                return crop_iregion.sum()/bb[2]/bb[3] < self.ignoreThrBB
+                return crop_iregion.sum() / bb[2] / bb[3] < self.ignoreThrBB
 
             # filtering UVs
             ignoremask = np.require(crop_iregion, requirements=['F'])
-            uvmask = np.require(np.asarray(dt['uv'][0]>0), dtype = np.uint8,
+            uvmask = np.require(np.asarray(dt['uv'][0] > 0), dtype=np.uint8,
                     requirements=['F'])
             uvmask_ = maskUtils.encode(uvmask)
             ignoremask_ = maskUtils.encode(ignoremask)
@@ -195,13 +198,13 @@ class denseposeCOCOeval:
         p = self.params
 
         if p.useCats:
-            gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
-            dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
         else:
-            gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
-            dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
 
-        # if iouType == 'uv', add point gt annotations
+        # add point gt annotations if iouType == 'uv'
         if p.iouType == 'uv':
             self._loadGEval()
 
@@ -217,7 +220,7 @@ class denseposeCOCOeval:
             if p.iouType == 'keypoints':
                 gt['ignore'] = (gt['num_keypoints'] == 0) or gt['ignore']
             if p.iouType == 'uv':
-                gt['ignore'] = ('dp_x' in gt)==0
+                gt['ignore'] = 'dp_x' not in gt
 
         self._gts = defaultdict(list)       # gt for evaluation
         self._dts = defaultdict(list)       # dt for evaluation
@@ -233,8 +236,8 @@ class denseposeCOCOeval:
             if _checkIgnore(dt, self._igrgns[dt['image_id']]):
                 self._dts[dt['image_id'], dt['category_id']].append(dt)
 
-        self.evalImgs = defaultdict(list)   # per-image per-category evaluation results
-        self.eval = {}                  # accumulated evaluation results
+        self.evalImgs = defaultdict(list)  # per-image per-category evaluation results
+        self.eval = {}                     # accumulated evaluation results
 
     def evaluate(self):
         '''
@@ -253,7 +256,7 @@ class denseposeCOCOeval:
         if p.useCats:
             p.catIds = list(np.unique(p.catIds))
         p.maxDets = sorted(p.maxDets)
-        self.params=p
+        self.params = p
 
         self._prepare()
         # loop through images, area range, max detection number
@@ -264,37 +267,40 @@ class denseposeCOCOeval:
         elif p.iouType == 'keypoints':
             computeIoU = self.computeOks
         elif p.iouType == 'uv':
-            computeIoU = self.computeOgps
+            computeIoU = self.computeGps
 
-        self.ious = {(imgId, catId): computeIoU(imgId, catId) \
-                        for imgId in p.imgIds
-                        for catId in catIds}
+        self.ious = {
+            (imgId, catId): computeIoU(imgId, catId)
+                for imgId in p.imgIds
+                for catId in catIds
+        }
 
         evaluateImg = self.evaluateImg
         maxDet = p.maxDets[-1]
-        self.evalImgs = [evaluateImg(imgId, catId, areaRng, maxDet)
-                 for catId in catIds
-                 for areaRng in p.areaRng
-                 for imgId in p.imgIds
-             ]
+        self.evalImgs = [
+            evaluateImg(imgId, catId, areaRng, maxDet) 
+                for catId in catIds
+                for areaRng in p.areaRng
+                for imgId in p.imgIds
+        ]
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
-        print('DONE (t={:0.2f}s).'.format(toc-tic))
+        print('DONE (t={:0.2f}s).'.format(toc - tic))
 
     def computeIoU(self, imgId, catId):
         p = self.params
         if p.useCats:
-            gt = self._gts[imgId,catId]
-            dt = self._dts[imgId,catId]
+            gt = self._gts[imgId, catId]
+            dt = self._dts[imgId, catId]
         else:
-            gt = [_ for cId in p.catIds for _ in self._gts[imgId,cId]]
-            dt = [_ for cId in p.catIds for _ in self._dts[imgId,cId]]
-        if len(gt) == 0 and len(dt) ==0:
+            gt = [_ for cId in p.catIds for _ in self._gts[imgId, cId]]
+            dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
+        if len(gt) == 0 and len(dt) == 0:
             return []
         inds = np.argsort([-d['score'] for d in dt], kind='mergesort')
         dt = [dt[i] for i in inds]
         if len(dt) > p.maxDets[-1]:
-            dt=dt[0:p.maxDets[-1]]
+            dt = dt[0:p.maxDets[-1]]
 
         if p.iouType == 'segm':
             g = [g['segmentation'] for g in gt]
@@ -312,7 +318,7 @@ class denseposeCOCOeval:
 
     def computeOks(self, imgId, catId):
         p = self.params
-        # dimention here should be Nxm
+        # dimention here should be N x m
         gts = self._gts[imgId, catId]
         dts = self._dts[imgId, catId]
         inds = np.argsort([-d['score'] for d in dts], kind='mergesort')
@@ -323,8 +329,8 @@ class denseposeCOCOeval:
         if len(gts) == 0 or len(dts) == 0:
             return []
         ious = np.zeros((len(dts), len(gts)))
-        sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89])/10.0
-        vars = (sigmas * 2)**2
+        sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
+        vars = (sigmas * 2) ** 2
         k = len(sigmas)
         # compute oks between each detection and ground truth object
         for j, gt in enumerate(gts):
@@ -338,83 +344,91 @@ class denseposeCOCOeval:
             for i, dt in enumerate(dts):
                 d = np.array(dt['keypoints'])
                 xd = d[0::3]; yd = d[1::3]
-                if k1>0:
+                if k1 > 0:
                     # measure the per-keypoint distance if keypoints visible
                     dx = xd - xg
                     dy = yd - yg
                 else:
                     # measure minimum distance to keypoints in (x0,y0) & (x1,y1)
                     z = np.zeros((k))
-                    dx = np.max((z, x0-xd), axis=0) + np.max((z, xd-x1), axis=0)
-                    dy = np.max((z, y0-yd), axis=0) + np.max((z, yd-y1), axis=0)
-                e = (dx**2 + dy**2) / vars / (gt['area'] + np.spacing(1)) / 2
+                    dx = np.max((z, x0 - xd), axis=0) + np.max((z, xd - x1), axis=0)
+                    dy = np.max((z, y0 - yd), axis=0) + np.max((z, yd - y1), axis=0)
+                e = (dx ** 2 + dy ** 2) / vars / (gt['area'] + np.spacing(1)) / 2
                 if k1 > 0:
-                    e=e[vg > 0]
+                    e = e[vg > 0]
                 ious[i, j] = np.sum(np.exp(-e)) / e.shape[0]
         return ious
 
-    def computeOgps(self, imgId, catId):
+    def computeGps(self, imgId, catId):
         p = self.params
-        # dimention here should be Nxm
-        g = self._gts[imgId, catId]
-        d = self._dts[imgId, catId]
-        inds = np.argsort([-d_['score'] for d_ in d], kind='mergesort')
-        d = [d[i] for i in inds]
-        if len(d) > p.maxDets[-1]:
-            d = d[0:p.maxDets[-1]]
-        # if len(gts) == 0 and len(dts) == 0:
-        if len(g) == 0 or len(d) == 0:
-            return []
-        ious = np.zeros((len(d), len(g)))
-        # compute opgs between each detection and ground truth object
-        sigma = self.sigma #0.255 # dist = 0.3m corresponds to ogps = 0.5
-        # 1 # dist = 0.3m corresponds to ogps = 0.96
-        # 1.45 # dist = 1.7m (person height) corresponds to ogps = 0.5)
-        for j, gt in enumerate(g):
-            if not gt['ignore']:
-                g_ = gt['bbox']
-                for i, dt in enumerate(d):
-                    #
-                    dx = dt['bbox'][3]
-                    dy = dt['bbox'][2]
-                    dp_x = np.array( gt['dp_x'] )*g_[2]/255.
-                    dp_y = np.array( gt['dp_y'] )*g_[3]/255.
-                    px = ( dp_y + g_[1] - dt['bbox'][1]).astype(np.int)
-                    py = ( dp_x + g_[0] - dt['bbox'][0]).astype(np.int)
-                    #
-                    pts = np.zeros(len(px))
-                    pts[px>=dx] = -1; pts[py>=dy] = -1
-                    pts[px<0] = -1; pts[py<0] = -1
-                    #print(pts.shape)
-                    if len(pts) < 1:
-                        ogps = 0.
-                    elif np.max(pts) == -1:
-                        ogps = 0.
-                    else:
-                        px[pts==-1] = 0; py[pts==-1] = 0;
-                        ipoints = dt['uv'][0, px, py]
-                        upoints = dt['uv'][1, px, py]/255. # convert from uint8 by /255.
-                        vpoints = dt['uv'][2, px, py]/255.
-                        ipoints[pts==-1] = 0
-                        ## Find closest vertices in subsampled mesh.
-                        cVerts, cVertsGT = self.findAllClosestVerts(gt, upoints, vpoints, ipoints)
-                        ## Get pairwise geodesic distances between gt and estimated mesh points.
-                        dist = self.getDistances(cVertsGT, cVerts)
-                        ## Compute the Ogps measure.
-                        # Find the mean geodesic normalization distance for each GT point, based on which part it is on.
-                        Current_Mean_Distances  = self.Mean_Distances[ self.CoarseParts[ self.Part_ids [ cVertsGT[cVertsGT>0].astype(int)-1] ]  ]
-                        # Compute gps
-                        ogps_values = np.exp(-(dist**2)/(2*(Current_Mean_Distances**2)))
-                        #
-                        if len(dist)>0:
-                            ogps = np.sum(ogps_values)/ len(dist)
-                    ious[i, j] = ogps
+        # dimention here should be N x m
+        gt = self._gts[imgId, catId]
+        dt = self._dts[imgId, catId]
+        inds = np.argsort([-d['score'] for d in dt], kind='mergesort')
+        dt = [dt[i] for i in inds]
+        if len(dt) > p.maxDets[-1]:
+            dt = dt[0:p.maxDets[-1]]
 
-        gbb = [gt['bbox'] for gt in g]
-        dbb = [dt['bbox'] for dt in d]
+        if len(gt) == 0 or len(dt) == 0:
+            return []
+        ious = np.zeros((len(dt), len(gt)))
+
+        # compute gps between each detection and ground truth object
+        # sigma = self.sigma  # 0.255 # dist = 0.3m corresponds to gps = 0.5
+        # 1 # dist = 0.3m corresponds to gps = 0.96
+        # 1.45 # dist = 1.7m (person height) corresponds to gps = 0.5)
+        for j, g in enumerate(gt):
+            # gps between any detection and an ignored ground truth person is 0
+            if g['ignore']:
+                continue
+            bb = g['bbox']
+            for i, d in enumerate(dt):
+                # width and height of detected bbox
+                dx = d['bbox'][2]; dy = d['bbox'][3]
+                # (2D) spatial coordinates of annotated points within current gt bbox on the image, 
+                # which are scaled such that the gt bbox size is 256 x 256.
+                dp_x = np.array(g['dp_x']) * bb[2] / 255.
+                dp_y = np.array(g['dp_y']) * bb[3] / 255.
+                # spatial coordinates of annotated points relative to detected bbox
+                px = (dp_x + bb[0] - d['bbox'][0]).astype(np.int)
+                py = (dp_y + bb[1] - d['bbox'][1]).astype(np.int)
+                pts = np.zeros(len(dp_x))  # len(dp_x): number of annotated points
+                # annotated points outside the range of detected bbox are considered as background
+                pts[px >= dx] = -1; pts[py >= dy] = -1
+                pts[px < 0] = -1; pts[py < 0] = -1
+                # print("#collected gt points: ", len(dp_x))
+                if len(dp_x) == 0:
+                    gps = 0.
+                elif pts.max() == -1:
+                    gps = 0.
+                else:
+                    px[pts == -1] = 0; py[pts == -1] = 0;
+                    ipoints = d['uv'][0, py, px]
+                    upoints = d['uv'][1, py, px] / 255. # convert from uint8 by /255.
+                    vpoints = d['uv'][2, py, px] / 255.
+                    ipoints[pts == -1] = 0
+                    # Find closest vertices index in subsampled mesh.
+                    cVertInds, cVertIndsGT = self.findAllClosestVertInds(g, upoints, vpoints, ipoints)
+                    # Get pairwise geodesic distances between GT and estimated mesh points.
+                    dist = self.getDistances(cVertInds, cVertIndsGT)
+                    # Compute the GPS measure.
+                    if len(dist) > 0:
+                        # Find the mean geodesic normalization distance for each GT point, based on which part it is on.
+                        Current_Mean_Distances  = self.Mean_Distances[
+                            self.CoarseParts[self.Part_ids[cVertIndsGT[cVertIndsGT > 0] - 1]]
+                        ]
+                        # Compute gps
+                        gps = np.exp(-(dist ** 2) / (2 * (Current_Mean_Distances ** 2)))
+                        gps = np.sum(gps) / len(dist)
+                    else:
+                        gps = 0.
+                ious[i, j] = gps
+
+        gbb = [g['bbox'] for g in gt]
+        dbb = [d['bbox'] for d in dt]
 
         # compute iou between each dt and gt region
-        iscrowd = [int(o['iscrowd']) for o in g]
+        iscrowd = [int(o['iscrowd']) for o in gt]
         ious_bb = maskUtils.iou(dbb, gbb, iscrowd)
         return ious, ious_bb
 
@@ -423,23 +437,21 @@ class denseposeCOCOeval:
         perform evaluation for single category and image
         :return: dict (single image results)
         '''
-
         p = self.params
         if p.useCats:
-            gt = self._gts[imgId,catId]
-            dt = self._dts[imgId,catId]
+            gt = self._gts[imgId, catId]
+            dt = self._dts[imgId, catId]
         else:
-            gt = [_ for cId in p.catIds for _ in self._gts[imgId,cId]]
-            dt = [_ for cId in p.catIds for _ in self._dts[imgId,cId]]
+            gt = [_ for cId in p.catIds for _ in self._gts[imgId, cId]]
+            dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
         if len(gt) == 0 and len(dt) == 0:
             return None
 
         for g in gt:
-            #g['_ignore'] = g['ignore']
-            if g['ignore'] or (g['area']<aRng[0] or g['area']>aRng[1]):
-                g['_ignore'] = True
+            if g['ignore'] or (g['area'] < aRng[0] or g['area'] > aRng[1]):
+                g['_ignore'] = 1
             else:
-                g['_ignore'] = False
+                g['_ignore'] = 0
 
         # sort dt highest score first, sort gt ignore last
         gtind = np.argsort([g['_ignore'] for g in gt], kind='mergesort')
@@ -449,9 +461,6 @@ class denseposeCOCOeval:
         iscrowd = [int(o['iscrowd']) for o in gt]
         # load computed ious
         if p.iouType == 'uv':
-            #print('Checking the length', len(self.ious[imgId, catId]))
-            #if len(self.ious[imgId, catId]) == 0:
-            #    print(self.ious[imgId, catId])
             ious = self.ious[imgId, catId][0][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
             ioubs = self.ious[imgId, catId][1][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
         else:
@@ -460,31 +469,32 @@ class denseposeCOCOeval:
         T = len(p.iouThrs)
         G = len(gt)
         D = len(dt)
-        gtm  = np.zeros((T,G))
-        dtm  = np.zeros((T,D))
+        gtm  = np.zeros((T, G))
+        dtm  = np.zeros((T, D))
         gtIg = np.array([g['_ignore'] for g in gt])
-        dtIg = np.zeros((T,D))
+        dtIg = np.zeros((T, D))
         if np.all(gtIg) == True and p.iouType == 'uv':
             dtIg = np.logical_or(dtIg, True)
 
-        if len(ious)>0: # and not p.iouType == 'uv':
+        if len(ious) > 0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = min([t,1-1e-10])
+                    iou = min([t, 1 - 1e-10])
                     m   = -1
                     for gind, g in enumerate(gt):
                         # if this gt already matched, and not a crowd, continue
-                        if gtm[tind,gind]>0 and not iscrowd[gind]:
+                        if gtm[tind, gind] > 0 and not iscrowd[gind]:
                             continue
                         # if dt matched to reg gt, and on ignore gt, stop
-                        if m>-1 and gtIg[m]==0 and gtIg[gind]==1:
+                        if m > -1 and gtIg[m] == 0 and gtIg[gind] == 1:
                             break
                         # continue to next gt unless better match made
-                        if ious[dind,gind] < iou:
+                        if ious[dind, gind] < iou:
                             continue
-                        if ious[dind,gind] == 0.:
-                            continue
+                        ## redundant condition after the above one
+                        # if ious[dind, gind] == 0.:
+                        #     continue
                         # if match successful and best so far, store appropriately
                         iou = ious[dind, gind]
                         m = gind
@@ -495,49 +505,54 @@ class denseposeCOCOeval:
                     dtm[tind, dind]  = gt[m]['id']
                     gtm[tind, m]     = d['id']
 
-        if p.iouType == 'uv':
-            if not len(ioubs)==0:
-                for dind, d in enumerate(dt):
-                    # information about best match so far (m=-1 -> unmatched)
-                    if dtm[tind, dind] == 0:
-                        ioub = 0.8
-                        m = -1
-                        for gind, g in enumerate(gt):
-                            # if this gt already matched, and not a crowd, continue
-                            if gtm[tind,gind]>0 and not iscrowd[gind]:
-                                continue
-                            # continue to next gt unless better match made
-                            if ioubs[dind,gind] < ioub:
-                                continue
-                            # if match successful and best so far, store appropriately
-                            ioub = ioubs[dind,gind]
-                            m = gind
-                            # if match made store id of match for both dt and gt
-                        if m > -1:
-                            dtIg[:, dind] = gtIg[m]
-                            if gtIg[m]:
-                                dtm[tind, dind]  = gt[m]['id']
-                                gtm[tind, m]     = d['id']
-        # set unmatched detections outside of area range to ignore
-        a = np.array([d['area']<aRng[0] or d['area']>aRng[1] for d in dt]).reshape((1, len(dt)))
-        dtIg = np.logical_or(dtIg, np.logical_and(dtm==0, np.repeat(a,T,0)))
-        # store results for given image and category
-        #print('Done with the function', len(self.ious[imgId, catId]))
-        return {
-                'image_id':     imgId,
-                'category_id':  catId,
-                'aRng':         aRng,
-                'maxDet':       maxDet,
-                'dtIds':        [d['id'] for d in dt],
-                'gtIds':        [g['id'] for g in gt],
-                'dtMatches':    dtm,
-                'gtMatches':    gtm,
-                'dtScores':     [d['score'] for d in dt],
-                'gtIgnore':     gtIg,
-                'dtIgnore':     dtIg,
-            }
+        """
+        When evaluating for body_uv, suppressing/ignoring a detected box (`dbox`) at all GPS thresholds 
+        which satisfies the following criterion:
+            GPS(dbox, gbox) = 0 while IoU(dbox, gbox) > 0.8, where `gbox` is an ignored gt box.
+        """
+        if p.iouType == 'uv' and len(ioubs) > 0:
+            for dind, d in enumerate(dt):
+                # information about best match so far (m=-1 -> unmatched)
+                if dtm[tind, dind] == 0:
+                    ioub = 0.8  # a manually set IoU threshold
+                    m = -1
+                    for gind, g in enumerate(gt):
+                        # if this gt already matched, and not a crowd, continue
+                        if gtm[tind, gind] > 0 and not iscrowd[gind]:
+                            continue
+                        # continue to next gt unless better match made
+                        if ioubs[dind, gind] < ioub:
+                            continue
+                        # if match successful and best so far, store appropriately
+                        ioub = ioubs[dind, gind]
+                        m = gind
+                        # if match made store id of match for both dt and gt
+                    if m == -1:
+                        continue
+                    dtIg[:, dind] = gtIg[m]
+                    if gtIg[m]:
+                        dtm[tind, dind] = gt[m]['id']
+                        gtm[tind, m]    = d['id']
 
-    def accumulate(self, p = None):
+        # set unmatched detections outside of area range to ignore
+        a = np.array([d['area'] < aRng[0] or d['area'] > aRng[1] for d in dt]).reshape((1, len(dt)))
+        dtIg = np.logical_or(dtIg, np.logical_and(dtm == 0, np.repeat(a, T, 0)))
+        # store results for given image and category
+        return {
+            'image_id':    imgId,
+            'category_id': catId,
+            'aRng':        aRng,
+            'maxDet':      maxDet,
+            'dtIds':       [d['id'] for d in dt],
+            'gtIds':       [g['id'] for g in gt],
+            'dtMatches':   dtm,
+            'gtMatches':   gtm,
+            'dtScores':    [d['score'] for d in dt],
+            'gtIgnore':    gtIg,
+            'dtIgnore':    dtIg,
+        }
+
+    def accumulate(self, p=None):
         '''
         Accumulate per image evaluation results and store the result in self.eval
         :param p: input params for evaluation
@@ -551,16 +566,17 @@ class denseposeCOCOeval:
         if p is None:
             p = self.params
         p.catIds = p.catIds if p.useCats == 1 else [-1]
-        T           = len(p.iouThrs)
-        R           = len(p.recThrs)
-        K           = len(p.catIds) if p.useCats else 1
-        A           = len(p.areaRng)
-        M           = len(p.maxDets)
-        precision   = -np.ones((T,R,K,A,M)) # -1 for the precision of absent categories
-        recall      = -np.ones((T,K,A,M))
+        T         = len(p.iouThrs)
+        R         = len(p.recThrs)
+        K         = len(p.catIds) if p.useCats else 1
+        A         = len(p.areaRng)
+        M         = len(p.maxDets)
+        precision = -np.ones((T, R, K, A, M))  # -1 for the precision of absent categories
+        recall    = -np.ones((T, K, A, M))
+        scores    = -np.ones((T, R, K, A, M))
 
         # create dictionary for future indexing
-        print('Categories:', p.catIds)
+        print('Categories ids:', p.catIds)
         _pe = self._paramsEval
         catIds = _pe.catIds if _pe.useCats else [-1]
         setK = set(catIds)
@@ -589,58 +605,61 @@ class denseposeCOCOeval:
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = np.argsort(-dtScores, kind='mergesort')
+                    dtScoresSorted = dtScores[inds]
 
-                    dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)[:,inds]
-                    dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
+                    dtm  = np.concatenate([e['dtMatches'][:, 0:maxDet] for e in E], axis=1)[:, inds]
+                    dtIg = np.concatenate([e['dtIgnore'][:, 0:maxDet]  for e in E], axis=1)[:, inds]
                     gtIg = np.concatenate([e['gtIgnore'] for e in E])
-                    npig = np.count_nonzero(gtIg==0)
-                    #print('DTIG', np.sum(np.logical_not(dtIg)), len(dtIg))
-                    #print('GTIG', np.sum(np.logical_not(gtIg)), len(gtIg))
+                    npig = np.count_nonzero(gtIg == 0)
                     if npig == 0:
                         continue
-                    tps = np.logical_and(               dtm, np.logical_not(dtIg))
+                    tps = np.logical_and(               dtm,  np.logical_not(dtIg))
                     fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg))
+                    
                     tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
                     fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
-                    #print('TP_SUM', tp_sum, 'FP_SUM', fp_sum)
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
                         tp = np.array(tp)
                         fp = np.array(fp)
                         nd = len(tp)
                         rc = tp / npig
-                        pr = tp / (fp+tp+np.spacing(1))
+                        pr = tp / (fp + tp + np.spacing(1))
                         q  = np.zeros((R,))
+                        ss = np.zeros((R,))
 
                         if nd:
-                            recall[t,k,a,m] = rc[-1]
+                            recall[t, k, a, m] = rc[-1]
                         else:
-                            recall[t,k,a,m] = 0
+                            recall[t, k, a, m] = 0
 
                         # numpy is slow without cython optimization for accessing elements
                         # use python array gets significant speed improvement
                         pr = pr.tolist(); q = q.tolist()
 
-                        for i in range(nd-1, 0, -1):
-                            if pr[i] > pr[i-1]:
-                                pr[i-1] = pr[i]
+                        for i in range(nd - 1, 0, -1):
+                            if pr[i] > pr[i - 1]:
+                                pr[i - 1] = pr[i]
 
                         inds = np.searchsorted(rc, p.recThrs, side='left')
                         try:
                             for ri, pi in enumerate(inds):
                                 q[ri] = pr[pi]
+                                ss[ri] = dtScoresSorted[pi]
                         except:
                             pass
-                        precision[t,:,k,a,m] = np.array(q)
-        print('Final', np.max(precision), np.min(precision))
+                        precision[t, :, k, a, m] = np.array(q)
+                        scores[t, :, k, a, m] = np.array(ss)
+        print('Final precisions, max: {:.2f}, min: {:.2f}'.format(np.max(precision), np.min(precision)))
         self.eval = {
             'params': p,
             'counts': [T, R, K, A, M],
             'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'precision': precision,
-            'recall':   recall,
+            'recall': recall,
+            'scores': scores,
         }
         toc = time.time()
-        print('DONE (t={:0.2f}s).'.format( toc-tic))
+        print('DONE (t={:0.2f}s).'.format(toc - tic))
 
     def summarize(self):
         '''
@@ -651,12 +670,12 @@ class denseposeCOCOeval:
             p = self.params
             iStr = ' {:<18} {} @[ {}={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
             titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
-            typeStr = '(AP)' if ap==1 else '(AR)'
+            typeStr = '(AP)' if ap == 1 else '(AR)'
             measure = 'IoU'
             if self.params.iouType == 'keypoints':
                 measure = 'OKS'
-            elif self.params.iouType =='uv':
-                measure = 'OGPS'
+            elif self.params.iouType == 'uv':
+                measure = 'GPS'
             iouStr = '{:0.2f}:{:0.2f}'.format(p.iouThrs[0], p.iouThrs[-1]) \
                 if iouThr is None else '{:0.2f}'.format(iouThr)
 
@@ -667,22 +686,23 @@ class denseposeCOCOeval:
                 s = self.eval['precision']
                 # IoU
                 if iouThr is not None:
-                    t = np.where(np.abs(iouThr - p.iouThrs)<0.001)[0]
+                    t = np.where(np.abs(iouThr - p.iouThrs) < 0.001)[0]
                     s = s[t]
-                s = s[:,:,:,aind,mind]
+                s = s[:, :, :, aind, mind]
             else:
                 # dimension of recall: [TxKxAxM]
                 s = self.eval['recall']
                 if iouThr is not None:
                     t = np.where(iouThr == p.iouThrs)[0]
                     s = s[t]
-                s = s[:,:,aind,mind]
-            if len(s[s>-1])==0:
+                s = s[:, :, aind, mind]
+            if len(s[s > -1]) == 0:
                 mean_s = -1
             else:
-                mean_s = np.mean(s[s>-1])
+                mean_s = np.mean(s[s > -1])
             print(iStr.format(titleStr, typeStr, measure, iouStr, areaRng, maxDets, mean_s))
             return mean_s
+
         def _summarizeDets():
             stats = np.zeros((12,))
             stats[0] = _summarize(1)
@@ -698,6 +718,7 @@ class denseposeCOCOeval:
             stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
             stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
             return stats
+
         def _summarizeKps():
             stats = np.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)
@@ -711,6 +732,7 @@ class denseposeCOCOeval:
             stats[8] = _summarize(0, maxDets=20, areaRng='medium')
             stats[9] = _summarize(0, maxDets=20, areaRng='large')
             return stats
+
         def _summarizeUvs():
             stats = np.zeros((18,))
             stats[0] = _summarize(1, maxDets=self.params.maxDets[0])
@@ -732,6 +754,7 @@ class denseposeCOCOeval:
             stats[16] = _summarize(0, maxDets=self.params.maxDets[0], areaRng='medium')
             stats[17] = _summarize(0, maxDets=self.params.maxDets[0], areaRng='large')
             return stats
+
         if not self.eval:
             raise Exception('Please run accumulate() first')
         iouType = self.params.iouType
@@ -747,74 +770,51 @@ class denseposeCOCOeval:
         self.summarize()
 
     # ================ functions for dense pose ==============================
-    def findAllClosestVerts(self, gt, U_points, V_points, Index_points):
-        #
+    def findAllClosestVertInds(self, gt, U_points, V_points, Index_points):
         I_gt = np.array(gt['dp_I'])
         U_gt = np.array(gt['dp_U'])
         V_gt = np.array(gt['dp_V'])
-        #
-        #print(I_gt)
-        #
-        ClosestVerts = np.ones(Index_points.shape)*-1
-        for i in np.arange(24):
-            #
-            if sum(Index_points == (i+1))>0:
-                UVs = np.array( [U_points[Index_points == (i+1)],V_points[Index_points == (i+1)]])
-                Current_Part_UVs = self.Part_UVs[i]
-                Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i]
-                D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
-                ClosestVerts[Index_points == (i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
-        #
-        ClosestVertsGT = np.ones(Index_points.shape)*-1
-        for i in np.arange(24):
-            if sum(I_gt==(i+1))>0:
-                UVs = np.array([
-                    U_gt[I_gt==(i+1)],
-                    V_gt[I_gt==(i+1)]
-                ])
-                Current_Part_UVs = self.Part_UVs[i]
-                Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i]
-                D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
-                ClosestVertsGT[I_gt==(i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
-        #
-        return ClosestVerts, ClosestVertsGT
+        # find closest vertex for each estimated point and gt point in each part
+        ClosestVertInds = np.ones(Index_points.shape, dtype=int) * -1
+        ClosestVertIndsGT = np.ones(Index_points.shape, dtype=int) * -1
+        for i in np.arange(1, self.num_parts + 1):
+            Current_Part_UVs = self.Part_UVs[i - 1]
+            Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i - 1]
+            if sum(Index_points == i) > 0:
+                UVs = np.array([U_points[Index_points == i], V_points[Index_points == i]])
+                D = ssd.cdist(Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
+                ClosestVertInds[Index_points == i] = Current_Part_ClosestVertInds[np.argmin(D, axis=0)]
+            if sum(I_gt == i) > 0:
+                UVs = np.array([U_gt[I_gt == i], V_gt[I_gt == i]])
+                D = ssd.cdist(Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
+                ClosestVertIndsGT[I_gt == i] = Current_Part_ClosestVertInds[np.argmin(D, axis=0)]
+
+        return ClosestVertInds, ClosestVertIndsGT
 
 
-    def getDistances(self, cVertsGT, cVerts):
-        
-        ClosestVertsTransformed = self.PDIST_transform[cVerts.astype(int)-1]
-        ClosestVertsGTTransformed = self.PDIST_transform[cVertsGT.astype(int)-1]
-        #
-        ClosestVertsTransformed[cVerts<0] = 0
-        ClosestVertsGTTransformed[cVertsGT<0] = 0
-        #
-        cVertsGT = ClosestVertsGTTransformed
-        cVerts = ClosestVertsTransformed
-        #
-        n = 27554
+    def getDistances(self, cVertInds, cVertIndsGT):
+        cVerts = self.PDIST_transform[cVertInds - 1]
+        cVertsGT = self.PDIST_transform[cVertIndsGT - 1]
+        cVerts[cVertInds < 0] = 0
+        cVertsGT[cVertIndsGT < 0] = 0
+        # `n` is the number of points of which the geodesic distances are precomputed
+        # n = 27554
         dists = []
+        # loop through each pair of (gt_point, dt_point)
         for d in range(len(cVertsGT)):
             if cVertsGT[d] > 0:
                 if cVerts[d] > 0:
                     i = cVertsGT[d] - 1
                     j = cVerts[d] - 1
-                    if j == i:
+                    if i == j:  # elements on the diagonal are all zeros
                         dists.append(0)
-                    elif j > i:
-                        ccc = i
-                        i = j
-                        j = ccc
-                        i = n-i-1
-                        j = n-j-1
-                        k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
-                        k =  ( n*n - n )/2 -k -1
-                        dists.append(self.Pdist_matrix[int(k)][0])
+                    elif i > j:
+                        # find the offset to fetch the precomputed geodesic distance
+                        k = i * (i - 1) / 2 + j
+                        dists.append(self.Pdist_matrix[k][0])
                     else:
-                        i= n-i-1
-                        j= n-j-1
-                        k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
-                        k =  ( n*n - n )/2 -k -1
-                        dists.append(self.Pdist_matrix[int(k)][0])
+                        k = j * (j - 1) / 2 + i
+                        dists.append(self.Pdist_matrix[k][0])
                 else:
                     dists.append(np.inf)
         return np.array(dists).squeeze()

@@ -20,17 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import numpy as np
-
 import pycocotools.mask as mask_util
-
-
-def GetDensePoseMask(Polys):
-    MaskGen = np.zeros([256,256])
-    for i in range(1,15):
-        if(Polys[i-1]):
-            current_mask = mask_util.decode(Polys[i-1])
-            MaskGen[current_mask>0] = i
-    return MaskGen
 
 
 def flip_segms(segms, height, width):

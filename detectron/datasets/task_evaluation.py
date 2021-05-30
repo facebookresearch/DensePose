@@ -47,7 +47,7 @@ def evaluate_all(
     output_dir, use_matlab=False
 ):
     """Evaluate "all" tasks, where "all" includes box detection, instance
-    segmentation, and keypoint detection.
+    segmentation, keypoint detection, and human dense pose estimation.
     """
     all_results = evaluate_boxes(
         dataset, all_boxes, output_dir, use_matlab=use_matlab

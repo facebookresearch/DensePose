@@ -35,6 +35,15 @@ def cache_url(url_or_file, cache_dir):
     path to the cached file. If the argument is not a URL, simply return it as
     is.
     """
+    if re.match(r'^\$', url_or_file, re.IGNORECASE) is not None:
+        url_or_file = os.path.expandvars(url_or_file)
+        assert os.path.exists(url_or_file)
+        return url_or_file
+    elif re.match(r'^~', url_or_file, re.IGNORECASE) is not None:
+        url_or_file = os.path.expanduser(url_or_file)
+        assert os.path.exists(url_or_file)
+        return url_or_file
+
     is_url = re.match(r'^(?:http)s?://', url_or_file, re.IGNORECASE) is not None
 
     if not is_url:
@@ -42,8 +51,8 @@ def cache_url(url_or_file, cache_dir):
     #
     url = url_or_file
     #
-    Len_filename  = len( url.split('/')[-1] )
-    BASE_URL  =  url[0:-Len_filename-1]
+    Len_filename = len(url.split('/')[-1])
+    BASE_URL = url[0:-Len_filename - 1]
     #
     cache_file_path = url.replace(BASE_URL, cache_dir)
     if os.path.exists(cache_file_path):

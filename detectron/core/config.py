@@ -863,7 +863,7 @@ __C.BODY_UV_RCNN.HEATMAP_SIZE = -1
 __C.BODY_UV_RCNN.UP_SCALE = -1
 
 # Apply a ConvTranspose layer to the features prior to predicting the heatmaps
-__C.KRCNN.USE_DECONV = False
+__C.BODY_UV_RCNN.USE_DECONV = False
 # Channel dimension of the hidden representation produced by the ConvTranspose
 __C.BODY_UV_RCNN.DECONV_DIM = 256
 # Use a ConvTranspose layer to predict the heatmaps
@@ -875,6 +875,9 @@ __C.BODY_UV_RCNN.DECONV_KERNEL = 4
 
 # Number of patches in the dataset
 __C.BODY_UV_RCNN.NUM_PATCHES = -1
+
+# Number of semantic parts used to sample annotation points
+__C.BODY_UV_RCNN.NUM_SEMANTIC_PARTS = 14
 
 # Number of stacked Conv layers in body UV head
 __C.BODY_UV_RCNN.NUM_STACKED_CONVS = 8

@@ -948,7 +948,7 @@ def im_detect_body_uv(model, im_scale, boxes):
         # Removed squeeze calls due to singleton dimension issues
         CurAnnIndex = np.argmax(CurAnnIndex, axis=0)
         CurIndex_UV = np.argmax(CurIndex_UV, axis=0)
-        CurIndex_UV = CurIndex_UV * (CurAnnIndex>0).astype(np.float32)
+        CurIndex_UV = CurIndex_UV * (CurAnnIndex > 0).astype(np.float32)
 
         output = np.zeros([3, int(by), int(bx)], dtype=np.float32)
         output[0] = CurIndex_UV
@@ -956,8 +956,8 @@ def im_detect_body_uv(model, im_scale, boxes):
         for part_id in range(1, K):
             CurrentU = CurU_uv[part_id]
             CurrentV = CurV_uv[part_id]
-            output[1, CurIndex_UV==part_id] = CurrentU[CurIndex_UV==part_id]
-            output[2, CurIndex_UV==part_id] = CurrentV[CurIndex_UV==part_id]
+            output[1, CurIndex_UV == part_id] = CurrentU[CurIndex_UV == part_id]
+            output[2, CurIndex_UV == part_id] = CurrentV[CurIndex_UV == part_id]
         outputs.append(output)
 
     num_classes = cfg.MODEL.NUM_CLASSES
