@@ -1,5 +1,5 @@
 #  DensePose-PoseTrack
-We introduce the DensePose-Posetrack dataset, which consists of videos of multiple personcontain rapid motions, occlusions and scale variation which leads to a very challenging correspondence task. DensePose-PoseTrack will be a part of the [ECCV 2018 - POSETRACK CHALLENGE](https://posetrack.net/workshops/eccv2018/).
+We introduce the DensePose-Posetrack dataset, which consists of videos of multiple persons containing rapid motions, occlusions and scale variations which leads to a very challenging correspondence task. DensePose-PoseTrack will be a part of the [ECCV 2018 - POSETRACK CHALLENGE](https://posetrack.net/workshops/eccv2018/).
 
 <div align="center">
   <img src="https://drive.google.com/uc?export=view&id=1fed2Xvy2G6t4V_ICsEJIm-PaJ8o-e0Ws" width="700px" />
@@ -58,7 +58,7 @@ To demonstrate the evaluation, we use a DensePose-RCNN with a ResNet-50 trunk th
 cd $DENSEPOSE
 python2 tools/test_net.py \
     --cfg PoseTrack/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml \
-    TEST.WEIGHTS https://s3.amazonaws.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl \
+    TEST.WEIGHTS https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl \
     NUM_GPUS 1
 ```
 The evaluation of this baseline network should yield `Bounding Box AP: 0.4438` and `DensePose AP: 0.2698`.

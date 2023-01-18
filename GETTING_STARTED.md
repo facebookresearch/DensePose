@@ -15,11 +15,11 @@ python2 tools/infer_simple.py \
     --cfg configs/DensePose_ResNet101_FPN_s1x-e2e.yaml \
     --output-dir DensePoseData/infer_out/ \
     --image-ext jpg \
-    --wts https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
+    --wts https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
     DensePoseData/demo_data/demo_im.jpg
 ```
 
-DensePose should automatically download the model from the URL specified by the `--wts` argument. This tool will output visualizations of the detections in PDF format in the directory specified by `--output-dir`. Also, it will output two images `*_IUV.png` and `*_INDS.png` which consists of I,U, V channels and segmented instance indices respectively. Please see [`notebooks/DensePose-RCNN-Visualize-Results.ipynb`](['notebooks/DensePose-RCNN-Visualize-Results.ipynb']) for the visualizations of these outputs.
+DensePose should automatically download the model from the URL specified by the `--wts` argument. This tool will output visualizations of the detections in PDF format in the directory specified by `--output-dir`. Also, it will output two images `*_IUV.png` and `*_INDS.png` which consists of I,U, V channels and segmented instance indices respectively. Please see [`notebooks/DensePose-RCNN-Visualize-Results.ipynb`](notebooks/DensePose-RCNN-Visualize-Results.ipynb) for the visualizations of these outputs.
 
 
 ## Testing with Pretrained Models
@@ -30,7 +30,7 @@ This example shows how to run an end-to-end trained DensePose-RCNN model from th
 ```
 python2 tools/test_net.py \
     --cfg configs/DensePose_ResNet101_FPN_s1x-e2e.yaml \
-    TEST.WEIGHTS https://s3.amazonaws.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
+    TEST.WEIGHTS https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl \
     NUM_GPUS 1
 ```
 

@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 # This is a modified version of cocoeval.py where we also have the densepose evaluation.
 
-__author__ = 'tsungyi'
+__author__ = 'tsungyi' 
 
 import numpy as np
 import datetime
@@ -19,6 +19,9 @@ from scipy.io import loadmat
 import scipy.spatial.distance as ssd
 import os
 import itertools
+from scipy.optimize import linear_sum_assignment
+import numpy.ma as ma
+import cv2
 
 class denseposeCOCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.
@@ -70,7 +73,7 @@ class denseposeCOCOeval:
     # Data, paper, and tutorials available at:  http://mscoco.org/
     # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
     # Licensed under the Simplified BSD License [see coco/license.txt]
-    def __init__(self, cocoGt=None, cocoDt=None, iouType='segm', sigma=1.):
+    def __init__(self, evalDataDir, cocoGt=None, cocoDt=None, iouType='segm', sigma=1.):
         '''
         Initialize CocoEval using coco APIs for gt and dt
         :param cocoGt: coco object with ground truth annotations
@@ -79,6 +82,7 @@ class denseposeCOCOeval:
         '''
         if not iouType:
             print('iouType not specified. use default iouType segm')
+        self.evalDataDir = evalDataDir
         self.cocoGt   = cocoGt              # ground truth COCO API
         self.cocoDt   = cocoDt              # detections COCO API
         self.params   = {}                  # evaluation parameters
@@ -100,10 +104,10 @@ class denseposeCOCOeval:
 
     def _loadGEval(self):
         print('Loading densereg GT..')
-        prefix = os.path.dirname(__file__) + '/../../DensePoseData/eval_data/'
-        print(prefix)
-        SMPL_subdiv = loadmat(prefix + 'SMPL_subdiv.mat')
-        self.PDIST_transform = loadmat(prefix + 'SMPL_SUBDIV_TRANSFORM.mat')
+        smplFpath = os.path.join(self.evalDataDir, 'SMPL_subdiv.mat')
+        SMPL_subdiv = loadmat(smplFpath)
+        pdistTransformFpath = os.path.join(self.evalDataDir, 'SMPL_SUBDIV_TRANSFORM.mat')
+        self.PDIST_transform = loadmat(pdistTransformFpath)
         self.PDIST_transform = self.PDIST_transform['index'].squeeze()
         UV = np.array([
             SMPL_subdiv['U_subdiv'],
@@ -121,18 +125,29 @@ class denseposeCOCOeval:
             )
 
         arrays = {}
-        f = h5py.File( prefix + 'Pdist_matrix.mat')
+        pdistMatrixFpath = os.path.join(self.evalDataDir, 'Pdist_matrix.mat')
+        f = h5py.File(pdistMatrixFpath)
         for k, v in f.items():
             arrays[k] = np.array(v)
         self.Pdist_matrix = arrays['Pdist_matrix']
         self.Part_ids = np.array(  SMPL_subdiv['Part_ID_subdiv'].squeeze())
         # Mean geodesic distances for parts.
         self.Mean_Distances = np.array( [0, 0.351, 0.107, 0.126,0.237,0.173,0.142,0.128,0.150] )
-        # Coarse Part labels.
         self.CoarseParts = np.array( [ 0,  1,  1,  2,  2,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  
              6,  6,  6,  6,  7,  7,  7,  7,  8,  8] )
-        
         print('Loaded')
+
+    def _decodeUvData(self, dt):
+        from PIL import Image
+        import StringIO
+        uvData = dt['uv_data']
+        uvShape = dt['uv_shape']
+        fStream = StringIO.StringIO(uvData.decode('base64'))
+        im = Image.open(fStream)
+        data = np.rollaxis(np.array(im.getdata(), dtype=np.uint8), -1, 0)
+        dt['uv'] = data.reshape(uvShape)
+        del dt['uv_data']
+        del dt['uv_shape']
 
     def _prepare(self):
         '''
@@ -161,6 +176,7 @@ class denseposeCOCOeval:
                 rgns_merged.append(list(it.next() for it in itertools.cycle(rgns)))
             rles = maskUtils.frPyObjects(rgns_merged, img['height'], img['width'])
             rle = maskUtils.merge(rles)
+            
             return maskUtils.decode(rle)
 
         def _checkIgnore(dt, iregion):
@@ -201,6 +217,11 @@ class denseposeCOCOeval:
             gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
             dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
 
+        imns = self.cocoGt.loadImgs(p.imgIds)
+        self.size_mapping = {}
+        for im in imns:
+            self.size_mapping[im['id']] = [im['height'],im['width']]
+
         # if iouType == 'uv', add point gt annotations
         if p.iouType == 'uv':
             self._loadGEval()
@@ -231,24 +252,46 @@ class denseposeCOCOeval:
                 self._gts[iid, gt['category_id']].append(gt)
         for dt in dts:
             if _checkIgnore(dt, self._igrgns[dt['image_id']]):
+                self._decodeUvData(dt)
                 self._dts[dt['image_id'], dt['category_id']].append(dt)
 
         self.evalImgs = defaultdict(list)   # per-image per-category evaluation results
         self.eval = {}                  # accumulated evaluation results
 
-    def evaluate(self):
+    def evaluate(self, calc_mode='GPSm', tracking=True, UB_geo_iuvgt=False,
+        UB_geo_igt_uv0=False, UB_geo_igt=False, UB_geo_uv0=False, check_scores=False):
         '''
         Run per image evaluation on given images and store results (a list of dict) in self.evalImgs
         :return: None
         '''
+        self.UB_geo_iuvgt = UB_geo_iuvgt
+        self.UB_geo_igt_uv0 = UB_geo_igt_uv0
+        self.UB_geo_igt = UB_geo_igt
+        self.UB_geo_uv0 = UB_geo_uv0
+
+        # Options for calc_mode: GPS, GPSm, IOU
+        self.calc_mode = calc_mode
+        self.tracking = tracking
+
         tic = time.time()
-        print('Running per image evaluation...')
+
+        if check_scores:
+            print('Running per image *optimal score* evaluation for error analysis...')
+        else:
+            print('Running per image evaluation...')
+
+        self.do_gpsM = True #False
+
         p = self.params
         # add backward compatibility if useSegm is specified in params
         if not p.useSegm is None:
             p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
             print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
-        print('Evaluate annotation type *{}*'.format(p.iouType))
+
+        # raise exception if checking scores and not using keypoints
+        if check_scores and p.iouType != 'uv':
+            raise Exception('This function works only for *uv* eval.')
+
         p.imgIds = list(np.unique(p.imgIds))
         if p.useCats:
             p.catIds = list(np.unique(p.catIds))
@@ -266,13 +309,18 @@ class denseposeCOCOeval:
         elif p.iouType == 'uv':
             computeIoU = self.computeOgps
 
+        if self.do_gpsM:
+            self.real_ious = {(imgId, catId): self.computeDPIoU(imgId, catId) \
+                        for imgId in p.imgIds
+                        for catId in catIds}
+
         self.ious = {(imgId, catId): computeIoU(imgId, catId) \
                         for imgId in p.imgIds
                         for catId in catIds}
 
         evaluateImg = self.evaluateImg
         maxDet = p.maxDets[-1]
-        self.evalImgs = [evaluateImg(imgId, catId, areaRng, maxDet)
+        self.evalImgs = [evaluateImg(imgId, catId, areaRng, maxDet, check_scores)
                  for catId in catIds
                  for areaRng in p.areaRng
                  for imgId in p.imgIds
@@ -309,6 +357,95 @@ class denseposeCOCOeval:
         iscrowd = [int(o['iscrowd']) for o in gt]
         ious = maskUtils.iou(d, g, iscrowd)
         return ious
+
+    def GetDensePoseMask(self, Polys):
+        MaskGen = np.zeros([256,256])
+        for i in range(1,15):
+            if(Polys[i-1]):
+                current_mask = maskUtils.decode(Polys[i-1])
+                MaskGen[current_mask>0] = i
+        return MaskGen
+
+    def computeDPIoU(self, imgId, catId):
+        p = self.params
+        if p.useCats:
+            gt = self._gts[imgId,catId]
+            dt = self._dts[imgId,catId]
+        else:
+            gt = [_ for cId in p.catIds for _ in self._gts[imgId,cId]]
+            dt = [_ for cId in p.catIds for _ in self._dts[imgId,cId]]
+        if len(gt) == 0 and len(dt) ==0:
+            return []
+        inds = np.argsort([-d['score'] for d in dt], kind='mergesort')
+        dt = [dt[i] for i in inds]
+        if len(dt) > p.maxDets[-1]:
+            dt=dt[0:p.maxDets[-1]]
+
+        gtmasks = []
+
+        for g in gt:
+            im_h, im_w = self.size_mapping[g['image_id']]
+            im_mask = np.zeros((im_h, im_w), dtype=np.uint8)
+
+            if 'dp_masks' in g.keys():
+                mask = self.GetDensePoseMask(g['dp_masks'])
+
+                ref_box = np.array(g['bbox']).astype(np.int)
+                w = ref_box[2]
+                h = ref_box[3]
+                w = int(np.maximum(w, 1))
+                h = int(np.maximum(h, 1))
+
+                mask = cv2.resize(mask, (w, h))
+                mask = np.array(mask > 0.5, dtype=np.uint8)
+
+                x_0 = max(ref_box[0], 0)
+                x_1 = min(ref_box[0] + ref_box[2], im_w)
+                y_0 = max(ref_box[1], 0)
+                y_1 = min(ref_box[1] + ref_box[3], im_h)
+
+                im_mask[y_0:y_1, x_0:x_1] = mask[
+                    (y_0 - ref_box[1]):(y_1 - ref_box[1]),
+                    (x_0 - ref_box[0]):(x_1 - ref_box[0])
+                ]
+                im_mask = np.require(np.asarray(im_mask>0), dtype = np.uint8,
+                    requirements=['F'])
+
+            # Get RLE encoding used by the COCO evaluation API
+            rle = maskUtils.encode(
+                np.array(im_mask[:, :, np.newaxis], order='F')
+                )[0]
+            gtmasks.append(rle)
+
+        uvmasks = []
+        for d in dt:
+
+            mask = np.require(np.asarray(d['uv'][0]>0), dtype = np.uint8,
+                requirements=['F'])
+            #uvmask_ = maskUtils.encode(uvmask)
+            ref_box = np.array(d['bbox']).astype(np.int)
+
+            im_h, im_w = self.size_mapping[d['image_id']]
+            im_mask = np.zeros((im_h, im_w), dtype=np.uint8)
+
+            x_0 = max(ref_box[0], 0)
+            x_1 = min(ref_box[0] + ref_box[2], im_w)
+            y_0 = max(ref_box[1], 0)
+            y_1 = min(ref_box[1] + ref_box[3], im_h)
+
+            im_mask[y_0:y_1, x_0:x_1] = mask[
+                (y_0 - ref_box[1]):(y_1 - ref_box[1]),
+                (x_0 - ref_box[0]):(x_1 - ref_box[0])
+            ]
+            rle_det = maskUtils.encode(
+                np.array(im_mask[:, :, np.newaxis], order='F')
+            )[0]
+            uvmasks.append(rle_det)
+
+        # compute iou between each dt and gt region
+        iscrowd = [int(o['iscrowd']) for o in gt]
+        iousDP = maskUtils.iou(uvmasks, gtmasks, iscrowd)
+        return iousDP
 
     def computeOks(self, imgId, catId):
         p = self.params
@@ -367,7 +504,7 @@ class denseposeCOCOeval:
             return []
         ious = np.zeros((len(d), len(g)))
         # compute opgs between each detection and ground truth object
-        sigma = self.sigma #0.255 # dist = 0.3m corresponds to ogps = 0.5
+        #sigma = self.sigma #0.255 # dist = 0.3m corresponds to ogps = 0.5
         # 1 # dist = 0.3m corresponds to ogps = 0.96
         # 1.45 # dist = 1.7m (person height) corresponds to ogps = 0.5)
         for j, gt in enumerate(g):
@@ -395,6 +532,21 @@ class denseposeCOCOeval:
                         ipoints = dt['uv'][0, px, py]
                         upoints = dt['uv'][1, px, py]/255. # convert from uint8 by /255.
                         vpoints = dt['uv'][2, px, py]/255.
+
+                        if self.UB_geo_iuvgt:
+                            ipoints = np.array(gt['dp_I'])
+                            upoints = np.array(gt['dp_U'])
+                            vpoints = np.array(gt['dp_V'])
+                        elif self.UB_geo_igt_uv0:
+                            ipoints = np.array(gt['dp_I'])
+                            upoints = upoints * 0.
+                            vpoints = vpoints * 0.
+                        elif self.UB_geo_igt:
+                            ipoints = np.array(gt['dp_I'])
+                        elif self.UB_geo_uv0:
+                            upoints = upoints * 0.
+                            vpoints = vpoints * 0.
+
                         ipoints[pts==-1] = 0
                         ## Find closest vertices in subsampled mesh.
                         cVerts, cVertsGT = self.findAllClosestVerts(gt, upoints, vpoints, ipoints)
@@ -418,11 +570,92 @@ class denseposeCOCOeval:
         ious_bb = maskUtils.iou(dbb, gbb, iscrowd)
         return ious, ious_bb
 
-    def evaluateImg(self, imgId, catId, aRng, maxDet):
-        '''
-        perform evaluation for single category and image
-        :return: dict (single image results)
-        '''
+    def computeOgpsDraft(self, imgId, catId):
+        p = self.params
+        # dimention here should be Nxm
+        g = self._gts[imgId, catId]
+        d = self._dts[imgId, catId]
+        inds = np.argsort([-d_['score'] for d_ in d], kind='mergesort')
+        d = [d[i] for i in inds]
+        if len(d) > p.maxDets[-1]:
+            d = d[0:p.maxDets[-1]]
+        # if len(gts) == 0 and len(dts) == 0:
+        if len(g) == 0 or len(d) == 0:
+            return []
+        ious = np.zeros((len(g), len(d)))
+        # compute opgs between each detection and ground truth object
+        #sigma = self.sigma #0.255 # dist = 0.3m corresponds to ogps = 0.5
+        # 1 # dist = 0.3m corresponds to ogps = 0.96
+        # 1.45 # dist = 1.7m (person height) corresponds to ogps = 0.5)
+
+        #print('== Ground truths:', len(g), g[0].keys(), g[0]['track_id'], g[0]['image_id'])
+        #print('== Detections:', len(d))
+
+        entry = {}
+        entry['trackidxGT'] = []
+        entry['trackidxPr'] = []
+        entry['dist'] = []
+
+        for j, gt in enumerate(g):
+            entry['trackidxGT'].append(gt['track_id'])
+        for i, dt in enumerate(d):
+            entry['trackidxPr'].append(dt['track'])
+
+        for j, gt in enumerate(g):
+            #entry['dist'].append([])
+            if not gt['ignore']:
+                g_ = gt['bbox']
+                for i, dt in enumerate(d):
+                    dx = dt['bbox'][3]
+                    dy = dt['bbox'][2]
+                    dp_x = np.array( gt['dp_x'] )*g_[2]/255.
+                    dp_y = np.array( gt['dp_y'] )*g_[3]/255.
+                    px = ( dp_y + g_[1] - dt['bbox'][1]).astype(np.int)
+                    py = ( dp_x + g_[0] - dt['bbox'][0]).astype(np.int)
+                    #
+                    pts = np.zeros(len(px))
+                    pts[px>=dx] = -1; pts[py>=dy] = -1
+                    pts[px<0] = -1; pts[py<0] = -1
+                    #print(pts.shape)
+                    if len(pts) < 1:
+                        ogps = 0.
+                        #entry['dist'][-1].append([])
+                    elif np.max(pts) == -1:
+                        #entry['dist'][-1].append([])
+                        ogps = 0.
+                    else:
+                        px[pts==-1] = 0; py[pts==-1] = 0;
+                        ipoints = dt['uv'][0, px, py]
+                        upoints = dt['uv'][1, px, py]/255. # convert from uint8 by /255.
+                        vpoints = dt['uv'][2, px, py]/255.
+                        ipoints[pts==-1] = 0
+                        ## Find closest vertices in subsampled mesh.
+                        cVerts, cVertsGT = self.findAllClosestVerts(gt, upoints, vpoints, ipoints)
+                        ## Get pairwise geodesic distances between gt and estimated mesh points.
+                        dist = self.getDistances(cVertsGT, cVerts)
+                        dist[~np.isfinite(dist)]=0
+                        #entry['dist'][-1].append(dist)
+                        ## Compute the Ogps measure.
+                        # Find the mean geodesic normalization distance for each GT point, based on which part it is on.
+                        Current_Mean_Distances  = self.Mean_Distances[ self.CoarseParts[ self.Part_ids [ cVertsGT[cVertsGT>0].astype(int)-1] ]  ]
+                        # Compute gps
+                        ogps_values = np.exp(-(dist**2)/(2*(Current_Mean_Distances**2)))
+                        #
+                        if len(dist)>0:
+                            ogps = np.sum(ogps_values)/ len(dist)
+                    ious[j, i] = ogps
+
+        #print(len(g), len(d), entry['trackidxGT'], entry['trackidxPr'])
+        gbb = [gt['bbox'] for gt in g]
+        dbb = [dt['bbox'] for dt in d]
+
+        # compute iou between each dt and gt region
+        iscrowd = [int(o['iscrowd']) for o in g]
+        ious_bb = maskUtils.iou(dbb, gbb, iscrowd)
+
+        return ious, ious_bb, entry
+
+    def evaluateImg(self, imgId, catId, aRng, maxDet, check_scores):
 
         p = self.params
         if p.useCats:
@@ -457,6 +690,10 @@ class denseposeCOCOeval:
         else:
             ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
+        if self.do_gpsM:
+            iousM = self.real_ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
+
+
         T = len(p.iouThrs)
         G = len(gt)
         D = len(dt)
@@ -481,12 +718,19 @@ class denseposeCOCOeval:
                         if m>-1 and gtIg[m]==0 and gtIg[gind]==1:
                             break
                         # continue to next gt unless better match made
-                        if ious[dind,gind] < iou:
+                        if self.calc_mode=='GPSm':
+                            new_iou = np.sqrt(iousM[dind,gind] * ious[dind,gind])
+                        elif self.calc_mode=='IOU':
+                            new_iou = iousM[dind,gind]
+                        elif self.calc_mode=='GPS':
+                            new_iou = ious[dind,gind]
+
+                        if new_iou < iou:
                             continue
-                        if ious[dind,gind] == 0.:
+                        if new_iou == 0.:
                             continue
                         # if match successful and best so far, store appropriately
-                        iou = ious[dind, gind]
+                        iou = new_iou
                         m = gind
                     # if match made store id of match for both dt and gt
                     if m == -1:
@@ -779,6 +1023,53 @@ class denseposeCOCOeval:
         #
         return ClosestVerts, ClosestVertsGT
 
+    def findAllClosestVertsIUV(self, U_gt, V_gt, I_gt, U_points, V_points, Index_points):
+        #
+        #I_gt = np.array(gt['dp_I'])
+        #U_gt = np.array(gt['dp_U'])
+        #V_gt = np.array(gt['dp_V'])
+        #
+        #print(I_gt)
+        #
+        ClosestVerts = np.ones(Index_points.shape)*-1
+        for i in np.arange(24):
+            #
+            if sum(Index_points == (i+1))>0:
+                UVs = np.array( [U_points[Index_points == (i+1)],V_points[Index_points == (i+1)]])
+                Current_Part_UVs = self.Part_UVs[i]
+                Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i]
+                D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
+                ClosestVerts[Index_points == (i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
+        #
+        ClosestVertsGT = np.ones(Index_points.shape)*-1
+        for i in np.arange(24):
+            if sum(I_gt==(i+1))>0:
+                UVs = np.array([
+                    U_gt[I_gt==(i+1)],
+                    V_gt[I_gt==(i+1)]
+                ])
+                Current_Part_UVs = self.Part_UVs[i]
+                Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i]
+                D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
+                ClosestVertsGT[I_gt==(i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
+        #
+        return ClosestVerts, ClosestVertsGT
+
+    # ================ functions for dense pose ==============================
+    def findAllClosestVertsSingleImage(self, U_points, V_points, Index_points):
+        #
+        ClosestVerts = np.ones(Index_points.shape)*-1
+        for i in np.arange(24):
+            #
+            if sum(Index_points == (i+1))>0:
+                UVs = np.array( [U_points[Index_points == (i+1)],V_points[Index_points == (i+1)]])
+                Current_Part_UVs = self.Part_UVs[i]
+                Current_Part_ClosestVertInds = self.Part_ClosestVertInds[i]
+                D = ssd.cdist( Current_Part_UVs.transpose(), UVs.transpose()).squeeze()
+                ClosestVerts[Index_points == (i+1)] = Current_Part_ClosestVertInds[ np.argmin(D,axis=0) ]
+        #
+        return ClosestVerts
+
 
     def getDistances(self, cVertsGT, cVerts):
         
@@ -819,6 +1110,43 @@ class denseposeCOCOeval:
                     dists.append(np.inf)
         return np.array(dists).squeeze()
 
+    def getDistancesPair(self, cVerts00, cVerts01):
+
+        ClosestVerts00Transformed = self.PDIST_transform[cVerts00.astype(int)-1]
+        ClosestVerts01Transformed = self.PDIST_transform[cVerts01.astype(int)-1]
+        #
+        ClosestVerts00Transformed[cVerts00<0] = 0
+        ClosestVerts01Transformed[cVerts01<0] = 0
+        #
+        cVerts00 = ClosestVerts00Transformed
+        cVerts01 = ClosestVerts01Transformed
+        #
+        n = 27554
+        dists = []
+        for d in range(len(cVerts00)):
+            if (cVerts00[d] > 0) and (cVerts01[d] > 0):
+                i = cVerts00[d] - 1
+                j = cVerts01[d] - 1
+                if j == i:
+                    dists.append(0)
+                elif j > i:
+                    ccc = i
+                    i = j
+                    j = ccc
+                    i = n-i-1
+                    j = n-j-1
+                    k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+                    k =  ( n*n - n )/2 -k -1
+                    dists.append(self.Pdist_matrix[int(k)][0])
+                else:
+                    i= n-i-1
+                    j= n-j-1
+                    k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+                    k =  ( n*n - n )/2 -k -1
+                    dists.append(self.Pdist_matrix[int(k)][0])
+            else:
+                dists.append(np.inf)
+        return np.array(dists).squeeze()
 
 class Params:
     '''
@@ -856,6 +1184,16 @@ class Params:
         self.areaRngLbl = ['all', 'medium', 'large']
         self.useCats = 1
 
+        #the threshold that determines the limit for localization error
+        self.ogsLocThrs = .1
+        # oks thresholds that define a jitter error
+        self.jitterDPThrs = [.5,.85]
+        self.err_types    = ['miss','jitter']
+        self.check_DP   = True
+        self.check_scores = False
+        self.check_bckgd  = False
+
+
     def __init__(self, iouType='segm'):
         if iouType == 'segm' or iouType == 'bbox':
             self.setDetParams()
@@ -868,3 +1206,6 @@ class Params:
         self.iouType = iouType
         # useSegm is deprecated
         self.useSegm = None
+
+
+

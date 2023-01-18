@@ -24,12 +24,12 @@ RESNETS:
   NUM_GROUPS: 32
   WIDTH_PER_GROUP: 8
 TRAIN:
-  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/ImageNetPretrained/20171220/X-101-32x8d.pkl
+  WEIGHTS: https://dl.fbaipublicfiles.com/detectron/ImageNetPretrained/20171220/X-101-32x8d.pkl
   DATASETS: ('keypoints_coco_2014_train', 'keypoints_coco_2014_valminusminival')
   SCALES: (800,)
   MAX_SIZE: 1333
 TEST:
-  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/36760438/12_2017_baselines/rpn_person_only_X-101-32x8d-FPN_1x.yaml.06_04_23.M2oJlDPW/output/train/keypoints_coco_2014_train%3Akeypoints_coco_2014_valminusminival/generalized_rcnn/model_final.pkl
+  WEIGHTS: https://dl.fbaipublicfiles.com/detectron/36760438/12_2017_baselines/rpn_person_only_X-101-32x8d-FPN_1x.yaml.06_04_23.M2oJlDPW/output/train/keypoints_coco_2014_train%3Akeypoints_coco_2014_valminusminival/generalized_rcnn/model_final.pkl
   DATASETS: ( 'dense_coco_2014_minival', 'dense_coco_2014_valminusminival')
   SCALE: 800
   MAX_SIZE: 1333
